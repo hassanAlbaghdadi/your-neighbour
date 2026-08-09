@@ -1,26 +1,187 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* ======================================================================
+   YOUR NEIGHBOUR — DESIGN TOKENS
+   Three-layer system: primitive -> semantic -> component
+   ====================================================================== */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ---- PRIMITIVE: Terracotta (primary accent) ---- */
+  --color-terracotta-50: #fbf1ea;
+  --color-terracotta-100: #f6e1d2;
+  --color-terracotta-200: #edc3a6;
+  --color-terracotta-300: #e2a379;
+  --color-terracotta-400: #d48a5c;
+  --color-terracotta-500: #c86d44; /* brand base */
+  --color-terracotta-600: #b35b37;
+  --color-terracotta-700: #94492c;
+  --color-terracotta-800: #723824;
+  --color-terracotta-900: #52281a;
+
+  /* ---- PRIMITIVE: Sage (secondary accent) ---- */
+  --color-sage-50: #f3f5f2;
+  --color-sage-100: #e6eae4;
+  --color-sage-200: #cdd6c9;
+  --color-sage-300: #b2c0ac;
+  --color-sage-400: #9cad96;
+  --color-sage-500: #8a9a86; /* brand base */
+  --color-sage-600: #71816c;
+  --color-sage-700: #596655;
+  --color-sage-800: #434e40;
+  --color-sage-900: #2d342b;
+
+  /* ---- PRIMITIVE: Espresso (text) ---- */
+  --color-espresso-50: #f5f2f1;
+  --color-espresso-100: #e6dedb;
+  --color-espresso-300: #a99089;
+  --color-espresso-500: #6b4f47;
+  --color-espresso-700: #40312c;
+  --color-espresso-900: #2a211d; /* brand base */
+
+  /* ---- PRIMITIVE: Cream & Ivory (surfaces) ---- */
+  --color-cream-50: #fbf8f3; /* brand base — canvas background */
+  --color-ivory-50: #f5efe6; /* brand base — container fill */
+  --color-white: #ffffff;
+
+  /* ---- PRIMITIVE: Status (utility, not in brand kit) ---- */
+  --color-red-500: #dc2626;
+
+  /* ---- SEMANTIC ---- */
+  --background: var(--color-cream-50);
+  --foreground: var(--color-espresso-900);
+
+  --card: var(--color-white);
+  --card-foreground: var(--color-espresso-900);
+
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-espresso-900);
+
+  --primary: var(--color-terracotta-500);
+  --primary-hover: var(--color-terracotta-600);
+  --primary-foreground: var(--color-white);
+
+  --secondary: var(--color-sage-700);
+  --secondary-hover: var(--color-sage-800);
+  --secondary-foreground: var(--color-white);
+
+  --muted: var(--color-ivory-50);
+  --muted-foreground: var(--color-espresso-500);
+
+  --accent: var(--color-terracotta-50);
+  --accent-foreground: var(--color-espresso-900);
+
+  --destructive: var(--color-red-500);
+  --destructive-foreground: var(--color-white);
+
+  --border: #e8dfd3;
+  --input: #e8dfd3;
+  --ring: var(--color-terracotta-500);
+
+  /* ---- SEMANTIC: Radius ---- */
+  --radius: 0.75rem;
+
+  /* ---- SEMANTIC: Typography ---- */
+  --font-heading: var(--font-playfair-display), Georgia, serif;
 }
 
+/* ======================================================================
+   TAILWIND THEME MAPPING (v4 CSS-first config)
+   ====================================================================== */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Full brand palettes exposed as utilities, e.g. bg-terracotta-600 */
+  --color-terracotta-50: var(--color-terracotta-50);
+  --color-terracotta-100: var(--color-terracotta-100);
+  --color-terracotta-200: var(--color-terracotta-200);
+  --color-terracotta-300: var(--color-terracotta-300);
+  --color-terracotta-400: var(--color-terracotta-400);
+  --color-terracotta-500: var(--color-terracotta-500);
+  --color-terracotta-600: var(--color-terracotta-600);
+  --color-terracotta-700: var(--color-terracotta-700);
+  --color-terracotta-800: var(--color-terracotta-800);
+  --color-terracotta-900: var(--color-terracotta-900);
+
+  --color-sage-50: var(--color-sage-50);
+  --color-sage-100: var(--color-sage-100);
+  --color-sage-200: var(--color-sage-200);
+  --color-sage-300: var(--color-sage-300);
+  --color-sage-400: var(--color-sage-400);
+  --color-sage-500: var(--color-sage-500);
+  --color-sage-600: var(--color-sage-600);
+  --color-sage-700: var(--color-sage-700);
+  --color-sage-800: var(--color-sage-800);
+  --color-sage-900: var(--color-sage-900);
+
+  --color-espresso-50: var(--color-espresso-50);
+  --color-espresso-100: var(--color-espresso-100);
+  --color-espresso-300: var(--color-espresso-300);
+  --color-espresso-500: var(--color-espresso-500);
+  --color-espresso-700: var(--color-espresso-700);
+  --color-espresso-900: var(--color-espresso-900);
+
+  --color-cream-50: var(--color-cream-50);
+  --color-ivory-50: var(--color-ivory-50);
+
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-heading);
+
+  --radius-sm: calc(var(--radius) - 0.375rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ======================================================================
+   BASE LAYER
+   ====================================================================== */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
 }

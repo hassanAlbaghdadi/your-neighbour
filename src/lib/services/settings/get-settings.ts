@@ -1,0 +1,49 @@
+import { createClient } from "@/lib/supabase/server";
+
+export interface StoreSettings {
+  businessName: string;
+  contactEmail: string;
+  maxOrdersPerDay: number;
+  minAdvanceHours: number;
+  pickupTimeSlots: string[];
+  blackoutDates: string[];
+}
+
+const DEFAULTS: StoreSettings = {
+  businessName: "Your Neighbour",
+  contactEmail: "",
+  maxOrdersPerDay: 15,
+  minAdvanceHours: 24,
+  pickupTimeSlots: [],
+  blackoutDates: [],
+};
+
+export async function getSettings(): Promise<StoreSettings> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("settings").select("key, value");
+
+  if (error) {
+    throw new Error(`Failed to load store settings: ${error.message}`);
+  }
+
+  const value = new Map(data.map((row) => [row.key, row.value]));
+
+  return {
+    businessName:
+      (value.get("business_name") as string | undefined) ?? DEFAULTS.businessName,
+    contactEmail:
+      (value.get("contact_email") as string | undefined) ?? DEFAULTS.contactEmail,
+    maxOrdersPerDay:
+      (value.get("max_orders_per_day") as number | undefined) ??
+      DEFAULTS.maxOrdersPerDay,
+    minAdvanceHours:
+      (value.get("min_advance_hours") as number | undefined) ??
+      DEFAULTS.minAdvanceHours,
+    pickupTimeSlots:
+      (value.get("pickup_time_slots") as string[] | undefined) ??
+      DEFAULTS.pickupTimeSlots,
+    blackoutDates:
+      (value.get("blackout_dates") as string[] | undefined) ??
+      DEFAULTS.blackoutDates,
+  };
+}
