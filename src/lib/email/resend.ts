@@ -1,10 +1,66 @@
 import "server-only";
+import { Resend } from "resend";
+import type { OrderResult } from "@/lib/services/orders/create-order";
+
+const FROM_EMAIL = "Your Neighbour <onboarding@resend.dev>";
+
+function formatItemsList(items: OrderResult["items"]): string {
+  return items
+    .map(
+      (item) =>
+        `${item.quantity} x ${item.productName} — $${(item.unitPrice * item.quantity).toFixed(2)}`,
+    )
+    .join("\n");
+}
 
 /**
- * Stub — wired up in Phase 4 (Resend integration). Kept as a separate
- * module now so create-order.ts already calls the real call site and
- * doesn't need to change when email sending is implemented.
+ * Fires both the customer receipt and the owner alert. Called
+ * non-blocking (fire-and-forget with a .catch) from create-order.ts —
+ * a failure here must never affect the checkout outcome.
  */
-export async function sendOrderNotifications(orderId: string): Promise<void> {
-  console.log(`[email] TODO: send order notifications for order ${orderId}`);
+export async function sendOrderNotifications(
+  order: OrderResult,
+  ownerEmail: string,
+  businessName: string,
+): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const itemsList = formatItemsList(order.items);
+  const firstName = order.customerName.split(" ")[0];
+
+  await Promise.all([
+    resend.emails.send({
+      from: FROM_EMAIL,
+      to: order.customerEmail,
+      subject: `Your ${businessName} order is confirmed`,
+      text: `Hi ${firstName},
+
+Thanks for your order! Here's your receipt:
+
+${itemsList}
+
+Total: $${order.total.toFixed(2)}
+
+Pickup: ${order.pickupDate} at ${order.pickupTime}
+${order.notes ? `\nYour notes: ${order.notes}\n` : ""}
+See you soon!
+${businessName}`,
+    }),
+    resend.emails.send({
+      from: FROM_EMAIL,
+      to: ownerEmail,
+      subject: `New order from ${order.customerName} — pickup ${order.pickupDate}`,
+      text: `New order received.
+
+Customer: ${order.customerName}
+Email: ${order.customerEmail}
+Phone: ${order.customerPhone}
+
+Pickup: ${order.pickupDate} at ${order.pickupTime}
+
+Items to bake:
+${itemsList}
+
+Total: $${order.total.toFixed(2)}${order.notes ? `\n\nCustomer notes: ${order.notes}` : ""}`,
+    }),
+  ]);
 }

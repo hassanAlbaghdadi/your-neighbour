@@ -5,6 +5,7 @@ export interface ProductInput {
   name: string;
   slug: string;
   categoryId: string | null;
+  imageUrl: string | null;
   description: string | null;
   price: number;
   isAvailable: boolean;
@@ -20,6 +21,7 @@ function toRow(input: ProductInput) {
     name: input.name,
     slug: input.slug,
     category_id: input.categoryId,
+    image_url: input.imageUrl,
     description: input.description,
     price: input.price,
     is_available: input.isAvailable,

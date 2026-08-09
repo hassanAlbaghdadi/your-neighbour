@@ -30,6 +30,7 @@ import {
   type ProductFormInput,
 } from "@/lib/validations/product";
 import { slugify } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import type { Category, Product } from "@/lib/services/products/get-products";
 
 interface ProductFormDialogProps {
@@ -45,6 +46,7 @@ export function ProductFormDialog({
 }: ProductFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [slugTouched, setSlugTouched] = useState(!!product);
 
   const {
@@ -60,6 +62,7 @@ export function ProductFormDialog({
       name: product?.name ?? "",
       slug: product?.slug ?? "",
       categoryId: product?.category_id ?? null,
+      imageUrl: product?.image_url ?? null,
       description: product?.description ?? "",
       price: product?.price ?? 0,
       isAvailable: product?.is_available ?? true,
@@ -68,6 +71,34 @@ export function ProductFormDialog({
       displayOrder: product?.display_order ?? 0,
     },
   });
+
+  async function handleFileChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+    onChange: (url: string | null) => void,
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const supabase = createClient();
+    const ext = file.name.split(".").pop();
+    const path = `${crypto.randomUUID()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { upsert: true });
+    setUploading(false);
+
+    if (error) {
+      toast.error(`Failed to upload image: ${error.message}`);
+      return;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("product-images").getPublicUrl(path);
+    onChange(publicUrl);
+  }
 
   async function onSubmit(values: ProductFormInput) {
     setSubmitting(true);
@@ -148,6 +179,35 @@ export function ProductFormDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                </Field>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="imageUrl"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel htmlFor="image">Photo</FieldLabel>
+                  {field.value && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={field.value}
+                      alt=""
+                      className="h-24 w-24 rounded-lg object-cover ring-1 ring-border"
+                    />
+                  )}
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    onChange={(e) => handleFileChange(e, field.onChange)}
+                    disabled={uploading}
+                  />
+                  {uploading && (
+                    <p className="text-sm text-muted-foreground">Uploading…</p>
+                  )}
+                  <FieldError errors={[errors.imageUrl]} />
                 </Field>
               )}
             />

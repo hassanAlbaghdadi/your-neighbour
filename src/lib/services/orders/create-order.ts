@@ -131,14 +131,7 @@ export async function processNewOrder(
     throw new Error(`Failed to save order items: ${itemsError.message}`);
   }
 
-  sendOrderNotifications(order.id).catch((error: unknown) => {
-    console.error(
-      `Failed to send order notification emails for ${order.id}:`,
-      error,
-    );
-  });
-
-  return {
+  const result: OrderResult = {
     id: order.id,
     customerName: order.customer_name,
     customerEmail: order.customer_email,
@@ -155,6 +148,17 @@ export async function processNewOrder(
       unitPrice: item.unit_price,
     })),
   };
+
+  sendOrderNotifications(result, settings.contactEmail, settings.businessName).catch(
+    (error: unknown) => {
+      console.error(
+        `Failed to send order notification emails for ${order.id}:`,
+        error,
+      );
+    },
+  );
+
+  return result;
 }
 
 async function getExistingOrder(id: string): Promise<OrderResult | null> {

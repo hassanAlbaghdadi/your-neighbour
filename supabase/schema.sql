@@ -140,3 +140,22 @@ CREATE POLICY "Admin Full Products" ON products FOR ALL TO authenticated USING (
 CREATE POLICY "Admin Full Orders" ON orders FOR ALL TO authenticated USING (true);
 CREATE POLICY "Admin Full Order Items" ON order_items FOR ALL TO authenticated USING (true);
 CREATE POLICY "Admin Full Settings" ON settings FOR ALL TO authenticated USING (true);
+
+
+-- ======================================================================
+-- STORAGE: product-images bucket
+-- Bucket itself is created with public:true (public read via the direct
+-- object URL bypasses RLS entirely), but uploads/deletes via the SDK
+-- still go through storage.objects RLS and need explicit policies.
+-- ======================================================================
+CREATE POLICY "Public Read Product Images" ON storage.objects
+  FOR SELECT USING (bucket_id = 'product-images');
+
+CREATE POLICY "Admin Upload Product Images" ON storage.objects
+  FOR INSERT TO authenticated WITH CHECK (bucket_id = 'product-images');
+
+CREATE POLICY "Admin Update Product Images" ON storage.objects
+  FOR UPDATE TO authenticated USING (bucket_id = 'product-images');
+
+CREATE POLICY "Admin Delete Product Images" ON storage.objects
+  FOR DELETE TO authenticated USING (bucket_id = 'product-images');

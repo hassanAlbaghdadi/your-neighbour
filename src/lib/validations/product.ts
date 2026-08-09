@@ -4,6 +4,7 @@ export const productFormSchema = z.object({
   name: z.string().min(1, "Required").max(200),
   slug: z.string().min(1, "Required").regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers, and hyphens only"),
   categoryId: z.string().uuid().nullable(),
+  imageUrl: z.string().url().nullable(),
   description: z.string().max(1000).optional().or(z.literal("")),
   price: z.coerce.number().min(0, "Must be 0 or more"),
   isAvailable: z.boolean(),
