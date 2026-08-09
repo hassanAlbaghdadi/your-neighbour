@@ -132,6 +132,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
+      noValidate
       className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]"
     >
       <FieldGroup>

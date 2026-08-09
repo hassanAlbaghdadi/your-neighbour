@@ -31,6 +31,7 @@ export function ProductTable({
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border">
+      <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-muted text-left text-muted-foreground">
           <tr>
@@ -55,6 +56,7 @@ export function ProductTable({
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

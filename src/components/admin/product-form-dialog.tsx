@@ -127,7 +127,7 @@ export function ProductFormDialog({
           <DialogTitle>{product ? "Edit Product" : "New Product"}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="name">Name</FieldLabel>

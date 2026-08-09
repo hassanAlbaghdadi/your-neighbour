@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
         Sign in to manage orders and settings.
       </p>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-8">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8">
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>

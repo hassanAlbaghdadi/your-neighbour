@@ -118,6 +118,7 @@ export default async function AdminOrdersPage({
         </div>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-border">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted text-left text-muted-foreground">
               <tr>
@@ -170,6 +171,7 @@ export default async function AdminOrdersPage({
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </section>
     </div>

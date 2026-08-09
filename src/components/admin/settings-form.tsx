@@ -44,7 +44,7 @@ export function SettingsForm({ settings }: { settings: StoreSettings }) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-xl">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="max-w-xl">
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="businessName">Business name</FieldLabel>
