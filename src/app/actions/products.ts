@@ -1,0 +1,110 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { productFormSchema } from "@/lib/validations/product";
+import {
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  setProductAvailability,
+  ProductError,
+} from "@/lib/services/products/manage-products";
+
+interface ActionResult {
+  success: boolean;
+  error?: string;
+}
+
+async function requireAdmin() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function createProductAction(payload: unknown): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { success: false, error: "Unauthorized" };
+
+  const parsed = productFormSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid product." };
+  }
+
+  try {
+    await createProduct({
+      ...parsed.data,
+      description: parsed.data.description || null,
+      preparationNotice: parsed.data.preparationNotice || null,
+      allergens: parsed.data.allergens || null,
+    });
+    revalidatePath("/admin/products");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    if (error instanceof ProductError) return { success: false, error: error.message };
+    console.error("createProductAction failed:", error);
+    return { success: false, error: "Failed to create product." };
+  }
+}
+
+export async function updateProductAction(
+  id: string,
+  payload: unknown,
+): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { success: false, error: "Unauthorized" };
+
+  const parsed = productFormSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid product." };
+  }
+
+  try {
+    await updateProduct(id, {
+      ...parsed.data,
+      description: parsed.data.description || null,
+      preparationNotice: parsed.data.preparationNotice || null,
+      allergens: parsed.data.allergens || null,
+    });
+    revalidatePath("/admin/products");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    if (error instanceof ProductError) return { success: false, error: error.message };
+    console.error("updateProductAction failed:", error);
+    return { success: false, error: "Failed to update product." };
+  }
+}
+
+export async function deleteProductAction(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { success: false, error: "Unauthorized" };
+
+  try {
+    await deleteProduct(id);
+    revalidatePath("/admin/products");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    if (error instanceof ProductError) return { success: false, error: error.message };
+    console.error("deleteProductAction failed:", error);
+    return { success: false, error: "Failed to delete product." };
+  }
+}
+
+export async function setProductAvailabilityAction(
+  id: string,
+  isAvailable: boolean,
+): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { success: false, error: "Unauthorized" };
+
+  try {
+    await setProductAvailability(id, isAvailable);
+    revalidatePath("/admin/products");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("setProductAvailabilityAction failed:", error);
+    return { success: false, error: "Failed to update availability." };
+  }
+}

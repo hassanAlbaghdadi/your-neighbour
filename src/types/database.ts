@@ -12,6 +12,15 @@ export type OrderStatus =
   | "Completed"
   | "Cancelled";
 
+export const ORDER_STATUSES: OrderStatus[] = [
+  "Pending",
+  "Confirmed",
+  "Preparing",
+  "Ready",
+  "Completed",
+  "Cancelled",
+];
+
 export type Json =
   | string
   | number

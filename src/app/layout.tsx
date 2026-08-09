@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Work_Sans } from "next/font/google";
 import "./globals.css";
+import { CartProvider } from "@/context/cart-context";
+import { SiteHeader } from "@/components/layout/site-header";
+import { Toaster } from "@/components/ui/sonner";
 
 const playfairDisplay = Playfair_Display({
   variable: "--font-playfair-display",
@@ -27,7 +30,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${playfairDisplay.variable} ${workSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
-        {children}
+        <CartProvider>
+          <SiteHeader />
+          <main className="flex flex-1 flex-col">{children}</main>
+        </CartProvider>
+        <Toaster />
       </body>
     </html>
   );
