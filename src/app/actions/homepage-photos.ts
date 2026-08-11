@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   heroPhotoInputSchema,
   galleryPhotoInputSchema,
@@ -25,14 +25,6 @@ interface ActionResult {
 
 interface AddPhotoResult extends ActionResult {
   photo?: { id: string; createdAt: string };
-}
-
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
 }
 
 export async function setHeroPhotoAction(

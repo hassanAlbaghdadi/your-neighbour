@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { categoryFormSchema } from "@/lib/validations/product";
 import {
   createCategory,
@@ -13,14 +13,6 @@ import {
 interface ActionResult {
   success: boolean;
   error?: string;
-}
-
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
 }
 
 export async function createCategoryAction(payload: unknown): Promise<ActionResult> {
