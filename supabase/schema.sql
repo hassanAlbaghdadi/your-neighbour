@@ -33,11 +33,16 @@ CREATE TABLE products (
 );
 
 -- 2b. PRODUCT VARIANTS TABLE (one product -> many purchasable sizes/styles)
+-- `image_url` is an OPTIONAL override — the storefront falls back to the
+-- parent product's photo when a variant has none set. Only worth setting
+-- for variants that actually look different (e.g. a cake with vs without
+-- decoration), not for pure size variants of the same item.
 CREATE TABLE product_variants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   label TEXT NOT NULL,
   price NUMERIC(10, 2) NOT NULL,
+  image_url TEXT,
   is_available BOOLEAN NOT NULL DEFAULT TRUE,
   display_order INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),

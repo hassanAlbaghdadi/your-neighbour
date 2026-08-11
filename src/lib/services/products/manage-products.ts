@@ -5,6 +5,7 @@ export interface VariantInput {
   id?: string;
   label: string;
   price: number;
+  imageUrl: string | null;
   isAvailable: boolean;
   displayOrder: number;
 }
@@ -43,6 +44,7 @@ function toVariantRow(productId: string, variant: VariantInput) {
     product_id: productId,
     label: variant.label,
     price: variant.price,
+    image_url: variant.imageUrl,
     is_available: variant.isAvailable,
     display_order: variant.displayOrder,
   };

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { Images, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,50 @@ interface ProductFormDialogProps {
   trigger: React.ReactNode;
 }
 
+function ExistingPhotoPicker({
+  photos,
+  onSelect,
+  compact,
+}: {
+  photos: string[];
+  onSelect: (url: string) => void;
+  compact?: boolean;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  return (
+    <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size={compact ? "icon" : "sm"}>
+          <Images />
+          {!compact && "Choose existing"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64">
+        {photos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
+        ) : (
+          <div className="grid max-h-64 grid-cols-4 gap-1.5 overflow-y-auto">
+            {photos.map((url) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={url}
+                src={url}
+                alt=""
+                className="aspect-square w-full cursor-pointer rounded-md object-cover ring-1 ring-border transition-opacity hover:opacity-75"
+                onClick={() => {
+                  onSelect(url);
+                  setPickerOpen(false);
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function ProductFormDialog({
   categories,
   product,
@@ -49,6 +94,39 @@ export function ProductFormDialog({
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [slugTouched, setSlugTouched] = useState(!!product);
+  const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+
+    async function loadExistingPhotos() {
+      const supabase = createClient();
+      const { data, error } = await supabase.storage
+        .from("product-images")
+        .list("", { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+      if (error || !data || cancelled) return;
+
+      const seen = new Set<string>();
+      const urls: string[] = [];
+      for (const file of data) {
+        const eTag = (file.metadata as { eTag?: string } | null)?.eTag;
+        const dedupeKey = eTag ?? file.name;
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("product-images").getPublicUrl(file.name);
+        urls.push(publicUrl);
+      }
+      if (!cancelled) setExistingPhotos(urls);
+    }
+
+    loadExistingPhotos();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const {
     register,
@@ -74,10 +152,11 @@ export function ProductFormDialog({
             id: v.id,
             label: v.label,
             price: v.price,
+            imageUrl: v.image_url,
             isAvailable: v.is_available,
             displayOrder: v.display_order,
           }))
-        : [{ label: "", price: 0, isAvailable: true, displayOrder: 0 }],
+        : [{ label: "", price: 0, imageUrl: null, isAvailable: true, displayOrder: 0 }],
     },
   });
 
@@ -208,13 +287,16 @@ export function ProductFormDialog({
                       className="h-24 w-24 rounded-lg object-cover ring-1 ring-border"
                     />
                   )}
-                  <Input
-                    id="image"
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
-                    onChange={(e) => handleFileChange(e, field.onChange)}
-                    disabled={uploading}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={(e) => handleFileChange(e, field.onChange)}
+                      disabled={uploading}
+                    />
+                    <ExistingPhotoPicker photos={existingPhotos} onSelect={field.onChange} />
+                  </div>
                   {uploading && (
                     <p className="text-sm text-muted-foreground">Uploading…</p>
                   )}
@@ -227,51 +309,95 @@ export function ProductFormDialog({
               <FieldLabel>Sizes</FieldLabel>
               <div className="flex flex-col gap-3">
                 {fields.map((field, index) => (
-                  <div key={field.id} className="flex items-end gap-2">
-                    <div className="flex-1">
-                      <FieldLabel htmlFor={`variants.${index}.label`} className="text-xs font-normal text-muted-foreground">
-                        Label
-                      </FieldLabel>
-                      <Input
-                        id={`variants.${index}.label`}
-                        placeholder="e.g. Piece, 9&quot;, 12 Piece"
-                        {...register(`variants.${index}.label` as const)}
+                  <div key={field.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <FieldLabel htmlFor={`variants.${index}.label`} className="text-xs font-normal text-muted-foreground">
+                          Label
+                        </FieldLabel>
+                        <Input
+                          id={`variants.${index}.label`}
+                          placeholder="e.g. Piece, 9&quot;, 12 Piece"
+                          {...register(`variants.${index}.label` as const)}
+                        />
+                      </div>
+                      <div className="w-24">
+                        <FieldLabel htmlFor={`variants.${index}.price`} className="text-xs font-normal text-muted-foreground">
+                          Price
+                        </FieldLabel>
+                        <Input
+                          id={`variants.${index}.price`}
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          {...register(`variants.${index}.price` as const)}
+                        />
+                      </div>
+                      <Controller
+                        control={control}
+                        name={`variants.${index}.isAvailable` as const}
+                        render={({ field: availableField }) => (
+                          <Switch
+                            aria-label={`Size ${index + 1} available`}
+                            checked={availableField.value}
+                            onCheckedChange={availableField.onChange}
+                            className="mb-2"
+                          />
+                        )}
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={fields.length === 1}
+                        onClick={() => remove(index)}
+                        aria-label="Remove size"
+                      >
+                        <X />
+                      </Button>
                     </div>
-                    <div className="w-24">
-                      <FieldLabel htmlFor={`variants.${index}.price`} className="text-xs font-normal text-muted-foreground">
-                        Price
-                      </FieldLabel>
-                      <Input
-                        id={`variants.${index}.price`}
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        {...register(`variants.${index}.price` as const)}
-                      />
-                    </div>
+
                     <Controller
                       control={control}
-                      name={`variants.${index}.isAvailable` as const}
-                      render={({ field: availableField }) => (
-                        <Switch
-                          aria-label={`Size ${index + 1} available`}
-                          checked={availableField.value}
-                          onCheckedChange={availableField.onChange}
-                          className="mb-2"
-                        />
+                      name={`variants.${index}.imageUrl` as const}
+                      render={({ field: imageField }) => (
+                        <div className="flex items-center gap-2">
+                          {imageField.value && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={imageField.value}
+                              alt=""
+                              className="size-10 shrink-0 rounded-md object-cover ring-1 ring-border"
+                            />
+                          )}
+                          <Input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                            onChange={(e) => handleFileChange(e, imageField.onChange)}
+                            disabled={uploading}
+                            className="text-xs"
+                          />
+                          <ExistingPhotoPicker
+                            photos={existingPhotos}
+                            onSelect={imageField.onChange}
+                            compact
+                          />
+                          {imageField.value && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => imageField.onChange(null)}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                        </div>
                       )}
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      disabled={fields.length === 1}
-                      onClick={() => remove(index)}
-                      aria-label="Remove size"
-                    >
-                      <X />
-                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Optional — only set this if this size actually looks different. Otherwise it uses the product photo above.
+                    </p>
                   </div>
                 ))}
               </div>
@@ -284,6 +410,7 @@ export function ProductFormDialog({
                   append({
                     label: "",
                     price: 0,
+                    imageUrl: null,
                     isAvailable: true,
                     displayOrder: fields.length,
                   })

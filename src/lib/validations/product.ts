@@ -4,6 +4,7 @@ export const productVariantFormSchema = z.object({
   id: z.string().uuid().optional(),
   label: z.string().min(1, "Required").max(100),
   price: z.coerce.number().min(0, "Must be 0 or more"),
+  imageUrl: z.string().url().nullable(),
   isAvailable: z.boolean(),
   displayOrder: z.coerce.number().int().min(0),
 });

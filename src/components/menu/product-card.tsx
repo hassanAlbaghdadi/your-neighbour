@@ -27,14 +27,15 @@ export function ProductCard({ product }: { product: Product }) {
     product.variants.find((v) => v.id === selectedVariantId) ?? product.variants[0];
 
   const isOrderable = product.is_available && selectedVariant?.is_available;
+  const displayImageUrl = selectedVariant?.image_url ?? product.image_url;
 
   return (
     <Card className="pt-0">
       <div className="relative aspect-4/3 w-full bg-muted">
-        {product.image_url ? (
+        {displayImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={product.image_url}
+            src={displayImageUrl}
             alt={product.name}
             className="h-full w-full object-cover"
           />
@@ -109,7 +110,7 @@ export function ProductCard({ product }: { product: Product }) {
               variantLabel: selectedVariant.label,
               slug: product.slug,
               price: selectedVariant.price,
-              imageUrl: product.image_url,
+              imageUrl: displayImageUrl,
             })
           }
         >
