@@ -17,7 +17,11 @@ export const productFormSchema = z.object({
   slug: z.string().min(1, "Required").regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers, and hyphens only"),
   categoryId: z.string().uuid().nullable(),
   imageUrl: z.string().url().nullable(),
-  description: z.string().max(1000).optional().or(z.literal("")),
+  // 130 is a safety margin under the measured truncation point of the product
+  // card's line-clamp-3 description (143 chars on mobile, 144 on desktop —
+  // mobile is the tighter constraint since its card is narrower than a
+  // 3-column desktop grid cell). Past this, the card silently cuts off text.
+  description: z.string().max(130, "Keep it under 130 characters — longer text gets cut off on the product card").optional().or(z.literal("")),
   isAvailable: z.boolean(),
   preparationNotice: z.string().max(300).optional().or(z.literal("")),
   allergens: z.string().max(300).optional().or(z.literal("")),
