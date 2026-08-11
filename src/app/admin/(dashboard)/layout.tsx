@@ -4,8 +4,9 @@ import { signOutAction } from "@/app/actions/auth";
 
 const NAV_LINKS = [
   { href: "/admin", label: "Orders" },
-  { href: "/admin/settings", label: "Settings" },
   { href: "/admin/products", label: "Products" },
+  { href: "/admin/homepage", label: "Homepage" },
+  { href: "/admin/settings", label: "Settings" },
 ];
 
 export default function AdminDashboardLayout({

@@ -88,12 +88,28 @@ CREATE TABLE settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 6. HOMEPAGE PHOTOS TABLE
+-- Optional admin-curated photos for the homepage hero/gallery sections.
+-- When no row exists for a section, the homepage falls back to
+-- auto-selecting from product photos — same additive/safe pattern as the
+-- per-variant image override.
+CREATE TABLE homepage_photos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  section TEXT NOT NULL CHECK (section IN ('hero', 'gallery')),
+  image_url TEXT NOT NULL,
+  alt_text TEXT,
+  display_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- INDEXES FOR QUERY OPTIMIZATION
 CREATE INDEX idx_products_available ON products(is_available);
 CREATE INDEX idx_product_variants_product_id ON product_variants(product_id);
 CREATE INDEX idx_orders_pickup ON orders(pickup_date, pickup_time);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX idx_homepage_photos_section ON homepage_photos(section, display_order);
 
 
 -- ======================================================================
@@ -113,6 +129,7 @@ CREATE TRIGGER update_product_variants_updated_at BEFORE UPDATE ON product_varia
 CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_order_items_updated_at BEFORE UPDATE ON order_items FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_homepage_photos_updated_at BEFORE UPDATE ON homepage_photos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 
 -- ======================================================================
@@ -149,12 +166,14 @@ ALTER TABLE product_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE homepage_photos ENABLE ROW LEVEL SECURITY;
 
 -- Public Read Only (Catalog and Store Settings)
 CREATE POLICY "Public Read Categories" ON categories FOR SELECT USING (true);
 CREATE POLICY "Public Read Products" ON products FOR SELECT USING (true);
 CREATE POLICY "Public Read Product Variants" ON product_variants FOR SELECT USING (true);
 CREATE POLICY "Public Read Settings" ON settings FOR SELECT USING (true);
+CREATE POLICY "Public Read Homepage Photos" ON homepage_photos FOR SELECT USING (true);
 
 -- Direct Public Writes Disallowed (Orders inserted strictly via Server Actions / Service Role)
 
@@ -165,6 +184,7 @@ CREATE POLICY "Admin Full Product Variants" ON product_variants FOR ALL TO authe
 CREATE POLICY "Admin Full Orders" ON orders FOR ALL TO authenticated USING (true);
 CREATE POLICY "Admin Full Order Items" ON order_items FOR ALL TO authenticated USING (true);
 CREATE POLICY "Admin Full Settings" ON settings FOR ALL TO authenticated USING (true);
+CREATE POLICY "Admin Full Homepage Photos" ON homepage_photos FOR ALL TO authenticated USING (true);
 
 
 -- ======================================================================

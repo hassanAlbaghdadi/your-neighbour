@@ -226,6 +226,28 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["settings"]["Insert"]>;
         Relationships: [];
       };
+      homepage_photos: {
+        Row: {
+          id: string;
+          section: "hero" | "gallery";
+          image_url: string;
+          alt_text: string | null;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          section: "hero" | "gallery";
+          image_url: string;
+          alt_text?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["homepage_photos"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

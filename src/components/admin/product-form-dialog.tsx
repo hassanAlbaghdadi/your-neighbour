@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Images, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -26,63 +25,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { ExistingPhotoPicker } from "@/components/admin/existing-photo-picker";
 import { createProductAction, updateProductAction } from "@/app/actions/products";
 import {
   productFormSchema,
   type ProductFormInput,
 } from "@/lib/validations/product";
 import { slugify } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
+import { useExistingPhotos } from "@/lib/hooks/use-existing-photos";
+import { usePhotoUpload } from "@/lib/hooks/use-photo-upload";
 import type { Category, Product } from "@/lib/services/products/get-products";
 
 interface ProductFormDialogProps {
   categories: Category[];
   product?: Product;
   trigger: React.ReactNode;
-}
-
-function ExistingPhotoPicker({
-  photos,
-  onSelect,
-  compact,
-}: {
-  photos: string[];
-  onSelect: (url: string) => void;
-  compact?: boolean;
-}) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-
-  return (
-    <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size={compact ? "icon" : "sm"}>
-          <Images />
-          {!compact && "Choose existing"}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64">
-        {photos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
-        ) : (
-          <div className="grid max-h-64 grid-cols-4 gap-1.5 overflow-y-auto">
-            {photos.map((url) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={url}
-                src={url}
-                alt=""
-                className="aspect-square w-full cursor-pointer rounded-md object-cover ring-1 ring-border transition-opacity hover:opacity-75"
-                onClick={() => {
-                  onSelect(url);
-                  setPickerOpen(false);
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
-  );
 }
 
 export function ProductFormDialog({
@@ -92,41 +49,9 @@ export function ProductFormDialog({
 }: ProductFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [slugTouched, setSlugTouched] = useState(!!product);
-  const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-
-    async function loadExistingPhotos() {
-      const supabase = createClient();
-      const { data, error } = await supabase.storage
-        .from("product-images")
-        .list("", { limit: 100, sortBy: { column: "created_at", order: "desc" } });
-      if (error || !data || cancelled) return;
-
-      const seen = new Set<string>();
-      const urls: string[] = [];
-      for (const file of data) {
-        const eTag = (file.metadata as { eTag?: string } | null)?.eTag;
-        const dedupeKey = eTag ?? file.name;
-        if (seen.has(dedupeKey)) continue;
-        seen.add(dedupeKey);
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("product-images").getPublicUrl(file.name);
-        urls.push(publicUrl);
-      }
-      if (!cancelled) setExistingPhotos(urls);
-    }
-
-    loadExistingPhotos();
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
+  const existingPhotos = useExistingPhotos(open);
+  const { uploading, upload } = usePhotoUpload();
 
   const {
     register,
@@ -169,25 +94,8 @@ export function ProductFormDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
-    const supabase = createClient();
-    const ext = file.name.split(".").pop();
-    const path = `${crypto.randomUUID()}.${ext}`;
-
-    const { error } = await supabase.storage
-      .from("product-images")
-      .upload(path, file, { upsert: true });
-    setUploading(false);
-
-    if (error) {
-      toast.error(`Failed to upload image: ${error.message}`);
-      return;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("product-images").getPublicUrl(path);
-    onChange(publicUrl);
+    const url = await upload(file);
+    if (url) onChange(url);
   }
 
   async function onSubmit(values: ProductFormInput) {
