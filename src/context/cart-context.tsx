@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { CartItem } from "@/types/cart";
+import { MAX_ITEM_QUANTITY } from "@/lib/validations/order";
 
 const STORAGE_KEY = "your-neighbour-cart";
 
@@ -32,6 +33,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
+        // Deliberately deferred to an effect rather than a lazy useState
+        // initializer: localStorage isn't available during SSR, so reading
+        // it eagerly would make the client's first render disagree with the
+        // server-rendered HTML (e.g. the header's cart-count badge) and
+        // trigger a hydration mismatch. This is the documented exception in
+        // React's own guidance — syncing with an external system that the
+        // server can't see — so the setState-in-effect lint rule is a false
+        // positive here.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setItems(JSON.parse(stored));
       } catch {
         // Corrupted cart data — start fresh rather than crash the app.
@@ -51,11 +61,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (existing) {
         return current.map((i) =>
           i.variantId === item.variantId
-            ? { ...i, quantity: i.quantity + quantity }
+            ? { ...i, quantity: Math.min(i.quantity + quantity, MAX_ITEM_QUANTITY) }
             : i,
         );
       }
-      return [...current, { ...item, quantity }];
+      return [...current, { ...item, quantity: Math.min(quantity, MAX_ITEM_QUANTITY) }];
     });
   }
 
@@ -68,9 +78,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem(variantId);
       return;
     }
+    const clamped = Math.min(quantity, MAX_ITEM_QUANTITY);
     setItems((current) =>
       current.map((i) =>
-        i.variantId === variantId ? { ...i, quantity } : i,
+        i.variantId === variantId ? { ...i, quantity: clamped } : i,
       ),
     );
   }

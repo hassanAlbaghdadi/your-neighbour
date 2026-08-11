@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ImageOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface HeroSectionProps {
@@ -27,13 +28,18 @@ export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
         </div>
 
         <div className="order-1 aspect-4/3 w-full overflow-hidden rounded-xl bg-muted lg:order-2 lg:aspect-square">
-          {imageUrl && (
+          {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imageUrl}
               alt={imageAlt}
               className="h-full w-full object-cover"
             />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
+              <ImageOff className="size-6" />
+              <span className="text-xs">No photo yet</span>
+            </div>
           )}
         </div>
       </div>

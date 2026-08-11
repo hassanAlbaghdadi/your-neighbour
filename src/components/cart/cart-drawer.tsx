@@ -11,6 +11,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { useCart } from "@/context/cart-context";
+import { MAX_ITEM_QUANTITY } from "@/lib/validations/order";
 
 interface CartDrawerProps {
   open: boolean;
@@ -64,6 +65,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                     <Button
                       variant="outline"
                       size="icon-sm"
+                      disabled={item.quantity >= MAX_ITEM_QUANTITY}
                       onClick={() =>
                         updateQuantity(item.variantId, item.quantity + 1)
                       }

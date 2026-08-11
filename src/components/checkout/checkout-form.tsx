@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, isBefore, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -42,16 +43,19 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
-  const minAllowed = useMemo(
+  // Captured once at mount via a lazy initializer rather than useMemo:
+  // Date.now() is an impure read, and useMemo's factory still runs during
+  // render, so React Compiler flags it. A one-time snapshot is also the
+  // correct behavior here — minAdvanceHours doesn't change mid-checkout.
+  const [minAllowed] = useState(
     () => new Date(Date.now() + settings.minAdvanceHours * 60 * 60 * 1000),
-    [settings.minAdvanceHours],
   );
 
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     formState: { errors },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -65,7 +69,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     },
   });
 
-  const pickupTime = watch("pickupTime");
+  const pickupTime = useWatch({ control, name: "pickupTime" });
 
   function isDateDisabled(date: Date) {
     if (isBefore(date, startOfDay(new Date()))) return true;
@@ -121,9 +125,9 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     return (
       <div className="mt-10 rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
         Your cart is empty.{" "}
-        <a href="/" className="text-primary underline underline-offset-4">
+        <Link href="/" className="text-primary underline underline-offset-4">
           Browse the menu
-        </a>{" "}
+        </Link>{" "}
         to add something first.
       </div>
     );

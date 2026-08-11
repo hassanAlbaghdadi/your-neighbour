@@ -4,7 +4,16 @@ export type UploadPhotoResult =
   | { success: true; url: string }
   | { success: false; error: string };
 
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
 export async function uploadPhoto(file: File): Promise<UploadPhotoResult> {
+  if (!file.type.startsWith("image/")) {
+    return { success: false, error: "Only image files are allowed." };
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return { success: false, error: "Image is too large — max 5MB." };
+  }
+
   const supabase = createClient();
   const ext = file.name.split(".").pop();
   const path = `${crypto.randomUUID()}.${ext}`;
