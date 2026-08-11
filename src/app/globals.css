@@ -58,8 +58,12 @@
   --popover: var(--color-white);
   --popover-foreground: var(--color-espresso-900);
 
-  --primary: var(--color-terracotta-500);
-  --primary-hover: var(--color-terracotta-600);
+  /* terracotta-500 measured 3.67:1 with white text — fails WCAG AA (4.5:1).
+     terracotta-600 passes at 4.70:1, so it's the base for anything carrying
+     white text (buttons, active pills); terracotta-500 stays available as a
+     raw palette utility for non-text uses (backgrounds, illustration accents). */
+  --primary: var(--color-terracotta-600);
+  --primary-hover: var(--color-terracotta-700);
   --primary-foreground: var(--color-white);
 
   --secondary: var(--color-sage-700);

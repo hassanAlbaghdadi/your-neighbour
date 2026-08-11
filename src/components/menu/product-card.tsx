@@ -71,7 +71,7 @@ export function ProductCard({ product }: { product: Product }) {
       )}
 
       {product.variants.length > 1 && (
-        <CardContent className="flex flex-wrap gap-1.5">
+        <CardContent className="flex flex-wrap gap-2">
           {product.variants.map((variant) => (
             <button
               key={variant.id}
@@ -79,7 +79,7 @@ export function ProductCard({ product }: { product: Product }) {
               disabled={!variant.is_available}
               onClick={() => setSelectedVariantId(variant.id)}
               className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                "min-h-10 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                 variant.id === selectedVariantId
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-background text-foreground hover:border-primary/50",
