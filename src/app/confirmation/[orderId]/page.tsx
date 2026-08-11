@@ -50,6 +50,9 @@ export default async function ConfirmationPage(
             >
               <span className="text-foreground">
                 {item.quantity} × {item.productName}
+                {item.variantLabel && (
+                  <span className="text-muted-foreground"> — {item.variantLabel}</span>
+                )}
               </span>
               <span className="text-muted-foreground">
                 ${(item.unitPrice * item.quantity).toFixed(2)}

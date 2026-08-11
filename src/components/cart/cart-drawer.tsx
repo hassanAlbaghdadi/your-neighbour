@@ -35,10 +35,13 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
           <div className="flex-1 overflow-y-auto px-4">
             <ul className="divide-y divide-border">
               {items.map((item) => (
-                <li key={item.productId} className="flex items-center gap-3 py-4">
+                <li key={item.variantId} className="flex items-center gap-3 py-4">
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-foreground">
                       {item.name}
+                      {item.variantLabel && (
+                        <span className="text-muted-foreground"> — {item.variantLabel}</span>
+                      )}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       ${item.price.toFixed(2)}
@@ -49,7 +52,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                       variant="outline"
                       size="icon-sm"
                       onClick={() =>
-                        updateQuantity(item.productId, item.quantity - 1)
+                        updateQuantity(item.variantId, item.quantity - 1)
                       }
                       aria-label={`Decrease quantity of ${item.name}`}
                     >
@@ -62,7 +65,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                       variant="outline"
                       size="icon-sm"
                       onClick={() =>
-                        updateQuantity(item.productId, item.quantity + 1)
+                        updateQuantity(item.variantId, item.quantity + 1)
                       }
                       aria-label={`Increase quantity of ${item.name}`}
                     >
@@ -71,7 +74,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => removeItem(item.productId)}
+                    onClick={() => removeItem(item.variantId)}
                     aria-label={`Remove ${item.name} from cart`}
                     className="text-muted-foreground transition-colors hover:text-destructive"
                   >

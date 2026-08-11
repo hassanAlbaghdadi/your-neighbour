@@ -59,7 +59,6 @@ export interface Database {
           name: string;
           slug: string;
           description: string | null;
-          price: number;
           image_url: string | null;
           is_available: boolean;
           preparation_notice: string | null;
@@ -74,7 +73,6 @@ export interface Database {
           name: string;
           slug: string;
           description?: string | null;
-          price: number;
           image_url?: string | null;
           is_available?: boolean;
           preparation_notice?: string | null;
@@ -90,6 +88,38 @@ export interface Database {
             columns: ["category_id"];
             isOneToOne: false;
             referencedRelation: "categories";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      product_variants: {
+        Row: {
+          id: string;
+          product_id: string;
+          label: string;
+          price: number;
+          is_available: boolean;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          label: string;
+          price: number;
+          is_available?: boolean;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["product_variants"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
             referencedColumns: ["id"];
           },
         ];
@@ -132,6 +162,8 @@ export interface Database {
           order_id: string | null;
           product_id: string | null;
           product_name: string;
+          variant_id: string | null;
+          variant_label: string | null;
           quantity: number;
           unit_price: number;
           created_at: string;
@@ -142,6 +174,8 @@ export interface Database {
           order_id?: string | null;
           product_id?: string | null;
           product_name: string;
+          variant_id?: string | null;
+          variant_label?: string | null;
           quantity: number;
           unit_price: number;
           created_at?: string;
@@ -161,6 +195,13 @@ export interface Database {
             columns: ["product_id"];
             isOneToOne: false;
             referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_items_variant_id_fkey";
+            columns: ["variant_id"];
+            isOneToOne: false;
+            referencedRelation: "product_variants";
             referencedColumns: ["id"];
           },
         ];

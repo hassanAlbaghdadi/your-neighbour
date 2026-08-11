@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ImageOff, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,11 +12,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import type { Product } from "@/lib/services/products/get-products";
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+
+  const firstAvailable = product.variants.find((v) => v.is_available);
+  const [selectedVariantId, setSelectedVariantId] = useState(
+    (firstAvailable ?? product.variants[0])?.id,
+  );
+  const selectedVariant =
+    product.variants.find((v) => v.id === selectedVariantId) ?? product.variants[0];
+
+  const isOrderable = product.is_available && selectedVariant?.is_available;
 
   return (
     <Card className="pt-0">
@@ -33,7 +44,7 @@ export function ProductCard({ product }: { product: Product }) {
             <span className="text-xs">No photo yet</span>
           </div>
         )}
-        {!product.is_available && (
+        {!isOrderable && (
           <Badge className="absolute top-3 left-3 bg-espresso-900 text-cream-50">
             Sold Out
           </Badge>
@@ -58,25 +69,51 @@ export function ProductCard({ product }: { product: Product }) {
         </CardContent>
       )}
 
+      {product.variants.length > 1 && (
+        <CardContent className="flex flex-wrap gap-1.5">
+          {product.variants.map((variant) => (
+            <button
+              key={variant.id}
+              type="button"
+              disabled={!variant.is_available}
+              onClick={() => setSelectedVariantId(variant.id)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                variant.id === selectedVariantId
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-foreground hover:border-primary/50",
+                !variant.is_available && "cursor-not-allowed opacity-40",
+              )}
+            >
+              {variant.label}
+              {!variant.is_available && " (Sold Out)"}
+            </button>
+          ))}
+        </CardContent>
+      )}
+
       <CardFooter className="mt-auto flex items-center justify-between gap-3">
         <span className="font-heading text-base font-semibold text-foreground">
-          ${product.price.toFixed(2)}
+          ${(selectedVariant?.price ?? 0).toFixed(2)}
         </span>
         <Button
           size="sm"
-          variant={product.is_available ? "default" : "secondary"}
-          disabled={!product.is_available}
+          variant={isOrderable ? "default" : "secondary"}
+          disabled={!isOrderable || !selectedVariant}
           onClick={() =>
+            selectedVariant &&
             addItem({
               productId: product.id,
+              variantId: selectedVariant.id,
               name: product.name,
+              variantLabel: selectedVariant.label,
               slug: product.slug,
-              price: product.price,
+              price: selectedVariant.price,
               imageUrl: product.image_url,
             })
           }
         >
-          {product.is_available ? (
+          {isOrderable ? (
             <>
               <Plus /> Add to Cart
             </>

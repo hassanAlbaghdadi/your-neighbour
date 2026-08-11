@@ -100,7 +100,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
       id: crypto.randomUUID(),
       ...values,
       items: items.map((item) => ({
-        productId: item.productId,
+        variantId: item.variantId,
         quantity: item.quantity,
       })),
     };
@@ -234,11 +234,14 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
         <ul className="mt-4 flex flex-col gap-3">
           {items.map((item) => (
             <li
-              key={item.productId}
+              key={item.variantId}
               className="flex items-center justify-between text-sm"
             >
               <span className="text-foreground">
                 {item.quantity} × {item.name}
+                {item.variantLabel && (
+                  <span className="text-muted-foreground"> — {item.variantLabel}</span>
+                )}
               </span>
               <span className="text-muted-foreground">
                 ${(item.price * item.quantity).toFixed(2)}

@@ -17,8 +17,8 @@ interface CartContextValue {
   itemCount: number;
   subtotal: number;
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  removeItem: (variantId: string) => void;
+  updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
 }
 
@@ -47,10 +47,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   function addItem(item: Omit<CartItem, "quantity">, quantity = 1) {
     setItems((current) => {
-      const existing = current.find((i) => i.productId === item.productId);
+      const existing = current.find((i) => i.variantId === item.variantId);
       if (existing) {
         return current.map((i) =>
-          i.productId === item.productId
+          i.variantId === item.variantId
             ? { ...i, quantity: i.quantity + quantity }
             : i,
         );
@@ -59,18 +59,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  function removeItem(productId: string) {
-    setItems((current) => current.filter((i) => i.productId !== productId));
+  function removeItem(variantId: string) {
+    setItems((current) => current.filter((i) => i.variantId !== variantId));
   }
 
-  function updateQuantity(productId: string, quantity: number) {
+  function updateQuantity(variantId: string, quantity: number) {
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(variantId);
       return;
     }
     setItems((current) =>
       current.map((i) =>
-        i.productId === productId ? { ...i, quantity } : i,
+        i.variantId === variantId ? { ...i, quantity } : i,
       ),
     );
   }

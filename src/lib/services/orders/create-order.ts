@@ -9,6 +9,7 @@ export class OrderError extends Error {}
 
 export interface OrderResultItem {
   productName: string;
+  variantLabel: string | null;
   quantity: number;
   unitPrice: number;
 }
@@ -71,19 +72,27 @@ export async function processNewOrder(
     );
   }
 
-  const productIds = input.items.map((item) => item.productId);
-  const { data: products, error: productsError } = await supabase
-    .from("products")
-    .select("id, name, price, is_available")
-    .in("id", productIds);
-  if (productsError) {
-    throw new Error(`Failed to verify products: ${productsError.message}`);
+  const variantIds = input.items.map((item) => item.variantId);
+  const { data: variants, error: variantsError } = await supabase
+    .from("product_variants")
+    .select("id, label, price, is_available, product:products(id, name, is_available)")
+    .in("id", variantIds);
+  if (variantsError) {
+    throw new Error(`Failed to verify products: ${variantsError.message}`);
   }
 
-  const productMap = new Map(products.map((product) => [product.id, product]));
+  const variantMap = new Map(
+    (variants as unknown as Array<{
+      id: string;
+      label: string;
+      price: number;
+      is_available: boolean;
+      product: { id: string; name: string; is_available: boolean } | null;
+    }>).map((variant) => [variant.id, variant]),
+  );
   for (const item of input.items) {
-    const product = productMap.get(item.productId);
-    if (!product || !product.is_available) {
+    const variant = variantMap.get(item.variantId);
+    if (!variant || !variant.product || !variant.product.is_available || !variant.is_available) {
       throw new OrderError(
         "Some items in your cart are no longer available.",
       );
@@ -91,12 +100,14 @@ export async function processNewOrder(
   }
 
   const orderItems = input.items.map((item) => {
-    const product = productMap.get(item.productId)!;
+    const variant = variantMap.get(item.variantId)!;
     return {
-      product_id: product.id,
-      product_name: product.name,
+      product_id: variant.product!.id,
+      product_name: variant.product!.name,
+      variant_id: variant.id,
+      variant_label: variant.label,
       quantity: item.quantity,
-      unit_price: product.price,
+      unit_price: variant.price,
     };
   });
   const subtotal = orderItems.reduce(
@@ -144,6 +155,7 @@ export async function processNewOrder(
     status: order.status,
     items: orderItems.map((item) => ({
       productName: item.product_name,
+      variantLabel: item.variant_label,
       quantity: item.quantity,
       unitPrice: item.unit_price,
     })),
@@ -176,7 +188,7 @@ async function getExistingOrder(id: string): Promise<OrderResult | null> {
 
   const { data: items, error: itemsError } = await supabase
     .from("order_items")
-    .select("product_name, quantity, unit_price")
+    .select("product_name, variant_label, quantity, unit_price")
     .eq("order_id", id);
   if (itemsError) {
     throw new Error(`Failed to load existing order items: ${itemsError.message}`);
@@ -195,6 +207,7 @@ async function getExistingOrder(id: string): Promise<OrderResult | null> {
     status: order.status,
     items: (items ?? []).map((item) => ({
       productName: item.product_name,
+      variantLabel: item.variant_label,
       quantity: item.quantity,
       unitPrice: item.unit_price,
     })),

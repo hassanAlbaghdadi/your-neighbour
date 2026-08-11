@@ -23,7 +23,7 @@ export async function getOrderById(id: string): Promise<OrderResult | null> {
 
   const { data: items, error: itemsError } = await supabase
     .from("order_items")
-    .select("product_name, quantity, unit_price")
+    .select("product_name, variant_label, quantity, unit_price")
     .eq("order_id", id);
   if (itemsError) {
     throw new Error(`Failed to load order items: ${itemsError.message}`);
@@ -42,6 +42,7 @@ export async function getOrderById(id: string): Promise<OrderResult | null> {
     status: order.status,
     items: (items ?? []).map((item) => ({
       productName: item.product_name,
+      variantLabel: item.variant_label,
       quantity: item.quantity,
       unitPrice: item.unit_price,
     })),

@@ -3,8 +3,11 @@ import type { Database } from "@/types/database";
 
 export type Category = Database["public"]["Tables"]["categories"]["Row"];
 
+export type ProductVariant = Database["public"]["Tables"]["product_variants"]["Row"];
+
 export type Product = Database["public"]["Tables"]["products"]["Row"] & {
   category: Pick<Category, "id" | "name" | "slug"> | null;
+  variants: ProductVariant[];
 };
 
 export async function getCategories(): Promise<Category[]> {
@@ -25,8 +28,11 @@ export async function getProducts(): Promise<Product[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("products")
-    .select("*, category:categories(id, name, slug)")
-    .order("display_order", { ascending: true });
+    .select(
+      "*, category:categories(id, name, slug), variants:product_variants(*)",
+    )
+    .order("display_order", { ascending: true })
+    .order("display_order", { referencedTable: "product_variants", ascending: true });
 
   if (error) {
     throw new Error(`Failed to load products: ${error.message}`);

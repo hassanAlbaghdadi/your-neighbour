@@ -8,6 +8,7 @@ import {
   updateProduct,
   deleteProduct,
   setProductAvailability,
+  setVariantAvailability,
   ProductError,
 } from "@/lib/services/products/manage-products";
 
@@ -105,6 +106,23 @@ export async function setProductAvailabilityAction(
     return { success: true };
   } catch (error) {
     console.error("setProductAvailabilityAction failed:", error);
+    return { success: false, error: "Failed to update availability." };
+  }
+}
+
+export async function setVariantAvailabilityAction(
+  id: string,
+  isAvailable: boolean,
+): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { success: false, error: "Unauthorized" };
+
+  try {
+    await setVariantAvailability(id, isAvailable);
+    revalidatePath("/admin/products");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("setVariantAvailabilityAction failed:", error);
     return { success: false, error: "Failed to update availability." };
   }
 }

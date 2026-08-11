@@ -15,18 +15,31 @@ CREATE TABLE categories (
 );
 
 -- 2. PRODUCTS TABLE
+-- `is_available` is a master switch for the whole flavor: turning it off hides
+-- every variant regardless of each variant's own is_available flag.
 CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
   description TEXT,
-  price NUMERIC(10, 2) NOT NULL,
   image_url TEXT,
   is_available BOOLEAN DEFAULT TRUE,
   preparation_notice TEXT,
   allergens TEXT,
   display_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2b. PRODUCT VARIANTS TABLE (one product -> many purchasable sizes/styles)
+CREATE TABLE product_variants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  price NUMERIC(10, 2) NOT NULL,
+  is_available BOOLEAN NOT NULL DEFAULT TRUE,
+  display_order INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -53,6 +66,8 @@ CREATE TABLE order_items (
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
   product_id UUID REFERENCES products(id) ON DELETE RESTRICT,
   product_name TEXT NOT NULL,
+  variant_id UUID REFERENCES product_variants(id) ON DELETE RESTRICT,
+  variant_label TEXT,
   quantity INT NOT NULL CHECK (quantity > 0),
   unit_price NUMERIC(10, 2) NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -70,6 +85,7 @@ CREATE TABLE settings (
 
 -- INDEXES FOR QUERY OPTIMIZATION
 CREATE INDEX idx_products_available ON products(is_available);
+CREATE INDEX idx_product_variants_product_id ON product_variants(product_id);
 CREATE INDEX idx_orders_pickup ON orders(pickup_date, pickup_time);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);
@@ -88,6 +104,7 @@ $$ language 'plpgsql';
 
 CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_product_variants_updated_at BEFORE UPDATE ON product_variants FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_order_items_updated_at BEFORE UPDATE ON order_items FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -123,6 +140,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authen
 -- ======================================================================
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
@@ -130,6 +148,7 @@ ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 -- Public Read Only (Catalog and Store Settings)
 CREATE POLICY "Public Read Categories" ON categories FOR SELECT USING (true);
 CREATE POLICY "Public Read Products" ON products FOR SELECT USING (true);
+CREATE POLICY "Public Read Product Variants" ON product_variants FOR SELECT USING (true);
 CREATE POLICY "Public Read Settings" ON settings FOR SELECT USING (true);
 
 -- Direct Public Writes Disallowed (Orders inserted strictly via Server Actions / Service Role)
@@ -137,6 +156,7 @@ CREATE POLICY "Public Read Settings" ON settings FOR SELECT USING (true);
 -- Authenticated Owner Full Access
 CREATE POLICY "Admin Full Categories" ON categories FOR ALL TO authenticated USING (true);
 CREATE POLICY "Admin Full Products" ON products FOR ALL TO authenticated USING (true);
+CREATE POLICY "Admin Full Product Variants" ON product_variants FOR ALL TO authenticated USING (true);
 CREATE POLICY "Admin Full Orders" ON orders FOR ALL TO authenticated USING (true);
 CREATE POLICY "Admin Full Order Items" ON order_items FOR ALL TO authenticated USING (true);
 CREATE POLICY "Admin Full Settings" ON settings FOR ALL TO authenticated USING (true);

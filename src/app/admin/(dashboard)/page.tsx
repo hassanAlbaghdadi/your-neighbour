@@ -88,10 +88,15 @@ export default async function AdminOrdersPage({
           <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
             {bakingSummary.map((item) => (
               <li
-                key={item.productName}
+                key={`${item.productName}::${item.variantLabel ?? ""}`}
                 className="flex items-center justify-between text-sm"
               >
-                <span className="text-foreground">{item.productName}</span>
+                <span className="text-foreground">
+                  {item.productName}
+                  {item.variantLabel && (
+                    <span className="text-muted-foreground"> — {item.variantLabel}</span>
+                  )}
+                </span>
                 <span className="font-medium text-foreground">
                   ×{item.quantity}
                 </span>

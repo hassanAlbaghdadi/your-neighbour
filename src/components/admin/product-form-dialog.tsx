@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,13 +65,23 @@ export function ProductFormDialog({
       categoryId: product?.category_id ?? null,
       imageUrl: product?.image_url ?? null,
       description: product?.description ?? "",
-      price: product?.price ?? 0,
       isAvailable: product?.is_available ?? true,
       preparationNotice: product?.preparation_notice ?? "",
       allergens: product?.allergens ?? "",
       displayOrder: product?.display_order ?? 0,
+      variants: product?.variants.length
+        ? product.variants.map((v) => ({
+            id: v.id,
+            label: v.label,
+            price: v.price,
+            isAvailable: v.is_available,
+            displayOrder: v.display_order,
+          }))
+        : [{ label: "", price: 0, isAvailable: true, displayOrder: 0 }],
     },
   });
+
+  const { fields, append, remove } = useFieldArray({ control, name: "variants" });
 
   async function handleFileChange(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -213,9 +224,74 @@ export function ProductFormDialog({
             />
 
             <Field>
-              <FieldLabel htmlFor="price">Price</FieldLabel>
-              <Input id="price" type="number" step="0.01" min={0} {...register("price")} />
-              <FieldError errors={[errors.price]} />
+              <FieldLabel>Sizes</FieldLabel>
+              <div className="flex flex-col gap-3">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <FieldLabel htmlFor={`variants.${index}.label`} className="text-xs font-normal text-muted-foreground">
+                        Label
+                      </FieldLabel>
+                      <Input
+                        id={`variants.${index}.label`}
+                        placeholder="e.g. Piece, 9&quot;, 12 Piece"
+                        {...register(`variants.${index}.label` as const)}
+                      />
+                    </div>
+                    <div className="w-24">
+                      <FieldLabel htmlFor={`variants.${index}.price`} className="text-xs font-normal text-muted-foreground">
+                        Price
+                      </FieldLabel>
+                      <Input
+                        id={`variants.${index}.price`}
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        {...register(`variants.${index}.price` as const)}
+                      />
+                    </div>
+                    <Controller
+                      control={control}
+                      name={`variants.${index}.isAvailable` as const}
+                      render={({ field: availableField }) => (
+                        <Switch
+                          aria-label={`Size ${index + 1} available`}
+                          checked={availableField.value}
+                          onCheckedChange={availableField.onChange}
+                          className="mb-2"
+                        />
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={fields.length === 1}
+                      onClick={() => remove(index)}
+                      aria-label="Remove size"
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 self-start"
+                onClick={() =>
+                  append({
+                    label: "",
+                    price: 0,
+                    isAvailable: true,
+                    displayOrder: fields.length,
+                  })
+                }
+              >
+                <Plus /> Add size
+              </Button>
+              <FieldError errors={[errors.variants?.root ?? errors.variants]} />
             </Field>
 
             <Field>
@@ -244,7 +320,12 @@ export function ProductFormDialog({
               name="isAvailable"
               render={({ field }) => (
                 <Field orientation="horizontal">
-                  <FieldLabel htmlFor="isAvailable">Available for order</FieldLabel>
+                  <FieldLabel htmlFor="isAvailable">
+                    Visible on storefront
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      Master switch — off hides every size, regardless of their own availability.
+                    </span>
+                  </FieldLabel>
                   <Switch
                     id="isAvailable"
                     checked={field.value}
