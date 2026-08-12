@@ -250,6 +250,24 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      create_order_atomic: {
+        Args: {
+          p_order_row: Json;
+          p_items: Json;
+        };
+        Returns: Database["public"]["Tables"]["orders"]["Row"];
+      };
+      update_product_atomic: {
+        Args: {
+          p_product_id: string;
+          p_product_row: Json;
+          p_variants_to_update: Json;
+          p_variants_to_insert: Json;
+          p_variant_ids_to_delete: string[];
+        };
+        Returns: undefined;
+      };
+    };
   };
 }

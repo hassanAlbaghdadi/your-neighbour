@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ImageOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { scrollToAnchor } from "@/lib/utils";
@@ -17,11 +18,13 @@ export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
       className="relative h-[92svh] max-h-[900px] min-h-[520px] w-full overflow-hidden bg-espresso-900"
     >
       {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={imageUrl}
           alt={imageAlt}
-          className="absolute inset-0 h-full w-full object-cover"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
         />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-cream-50/60">

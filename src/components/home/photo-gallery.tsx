@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface GalleryPhoto {
@@ -48,15 +49,16 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
             >
               <div
                 className={cn(
-                  "overflow-hidden rounded-xl bg-muted",
+                  "relative overflow-hidden rounded-xl bg-muted",
                   FRAME_ASPECTS[index % FRAME_ASPECTS.length],
                 )}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={photo.src}
                   alt={photo.alt}
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 28vw, (min-width: 640px) 38vw, 72vw"
+                  className="object-cover"
                 />
               </div>
               <figcaption className="mt-2 flex items-baseline gap-1.5 text-xs text-muted-foreground">

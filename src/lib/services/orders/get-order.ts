@@ -1,6 +1,9 @@
 import "server-only";
+import { z } from "zod";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
 import type { OrderResult } from "@/lib/services/orders/create-order";
+
+const uuidSchema = z.string().uuid();
 
 /**
  * Fetched by opaque UUID right after checkout for the confirmation page.
@@ -9,6 +12,12 @@ import type { OrderResult } from "@/lib/services/orders/create-order";
  * checkout-confirmation flows.
  */
 export async function getOrderById(id: string): Promise<OrderResult | null> {
+  // A malformed id (bad paste, truncated link, bot probing) makes Postgres
+  // reject the `.eq("id", id)` query below with an "invalid input syntax
+  // for type uuid" error, which the code re-throws — treat it the same as
+  // "not found" instead, since there had been no error boundary to catch it.
+  if (!uuidSchema.safeParse(id).success) return null;
+
   const supabase = createServiceRoleClient();
 
   const { data: order, error } = await supabase

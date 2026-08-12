@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,7 +11,6 @@ import { CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -26,11 +26,24 @@ import {
 } from "@/components/ui/field";
 import { useCart } from "@/context/cart-context";
 import { createOrderAction } from "@/app/actions/orders";
+import { formatPrice } from "@/lib/utils";
 import {
   checkoutFormSchema,
   type CheckoutFormValues,
 } from "@/lib/validations/order";
 import type { StoreSettings } from "@/lib/services/settings/get-settings";
+
+// react-day-picker only ever renders inside a closed-by-default Popover, so
+// it's loaded on demand instead of bundled into checkout's initial JS chunk.
+const Calendar = dynamic(
+  () => import("@/components/ui/calendar").then((mod) => mod.Calendar),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="p-4 text-sm text-muted-foreground">Loading calendar…</p>
+    ),
+  },
+);
 
 interface CheckoutFormProps {
   settings: StoreSettings;
@@ -41,7 +54,11 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
   const router = useRouter();
   const { items, subtotal, clearCart } = useCart();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [dateOpen, setDateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Guards re-entrancy synchronously — set and cleared entirely inside
+  // handleFormSubmit below, never in onSubmit. See the comment there.
+  const submittingRef = useRef(false);
 
   // Captured once at mount via a lazy initializer rather than useMemo:
   // Date.now() is an impure read, and useMemo's factory still runs during
@@ -50,6 +67,11 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
   const [minAllowed] = useState(
     () => new Date(Date.now() + settings.minAdvanceHours * 60 * 60 * 1000),
   );
+
+  // Same lazy-initializer pattern as minAllowed above: captured once at mount
+  // so every submit attempt (including a double-submit) reuses the same id,
+  // letting the server-side idempotency check actually catch duplicates.
+  const [orderId] = useState(() => crypto.randomUUID());
 
   const {
     register,
@@ -94,14 +116,19 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     setSelectedDate(date);
     setValue("pickupDate", date ? format(date, "yyyy-MM-dd") : "");
     setValue("pickupTime", "");
+    // Closing on select (rather than leaving it open until an outside
+    // click) matters here specifically: the pickup-time buttons render
+    // directly below the trigger, in the same screen area the still-open
+    // popover occupies, so a click aimed at a time slot right after picking
+    // a date was landing on the popover instead of the button underneath it.
+    setDateOpen(false);
   }
 
   async function onSubmit(values: CheckoutFormValues) {
     if (items.length === 0) return;
-    setSubmitting(true);
 
     const payload = {
-      id: crypto.randomUUID(),
+      id: orderId,
       ...values,
       items: items.map((item) => ({
         variantId: item.variantId,
@@ -110,7 +137,6 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     };
 
     const result = await createOrderAction(payload);
-    setSubmitting(false);
 
     if (!result.success || !result.data) {
       toast.error(result.error ?? "Something went wrong. Please try again.");
@@ -119,6 +145,32 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
 
     clearCart();
     router.push(`/confirmation/${result.data.id}`);
+  }
+
+  // A named handler, not `onSubmit={handleSubmit(onSubmit)}` inline in JSX:
+  // calling handleSubmit(onSubmit) directly in the render body hands a
+  // ref-reading closure to a function invoked during render, which trips
+  // React Compiler's ref-safety check (it can't prove handleSubmit won't
+  // call onSubmit synchronously). Wrapping it here means the ref is only
+  // ever touched inside a real event handler — exactly what refs are for.
+  // The ref (not the `submitting` state) is what actually prevents a
+  // double-submit: two clicks fired before React re-renders both invoke
+  // the same closure, which closes over the same stale `submitting` value —
+  // only a synchronously-mutated ref, set before the first `await`, is
+  // visible to both.
+  async function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
+    if (submittingRef.current) {
+      event.preventDefault();
+      return;
+    }
+    submittingRef.current = true;
+    setSubmitting(true);
+    try {
+      await handleSubmit(onSubmit)(event);
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
   }
 
   if (items.length === 0) {
@@ -135,14 +187,14 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleFormSubmit}
       noValidate
       className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]"
     >
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="pickup-date">Pickup date</FieldLabel>
-          <Popover>
+          <Popover open={dateOpen} onOpenChange={setDateOpen}>
             <PopoverTrigger asChild>
               <Button
                 id="pickup-date"
@@ -248,14 +300,14 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
                 )}
               </span>
               <span className="text-muted-foreground">
-                ${(item.price * item.quantity).toFixed(2)}
+                {formatPrice(item.price * item.quantity)}
               </span>
             </li>
           ))}
         </ul>
         <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-base font-medium text-foreground">
           <span>Total</span>
-          <span>${subtotal.toFixed(2)}</span>
+          <span>{formatPrice(subtotal)}</span>
         </div>
       </aside>
     </form>

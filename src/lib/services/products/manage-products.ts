@@ -79,14 +79,6 @@ export async function updateProduct(
 ): Promise<void> {
   const supabase = await createClient();
 
-  const { error } = await supabase.from("products").update(toRow(input)).eq("id", id);
-  if (error) {
-    if (error.code === "23505") {
-      throw new ProductError("A product with this slug already exists.");
-    }
-    throw new Error(`Failed to update product: ${error.message}`);
-  }
-
   const { data: existingVariants, error: fetchError } = await supabase
     .from("product_variants")
     .select("id")
@@ -100,41 +92,32 @@ export async function updateProduct(
     .map((v) => v.id)
     .filter((existingId) => !keptIds.has(existingId));
 
-  if (removedIds.length > 0) {
-    const { error: deleteError } = await supabase
-      .from("product_variants")
-      .delete()
-      .in("id", removedIds);
-    if (deleteError) {
-      if (deleteError.code === "23503") {
-        throw new ProductError(
-          "One of the sizes you removed has existing orders and can't be deleted — mark it unavailable instead.",
-        );
-      }
-      throw new Error(`Failed to remove sizes: ${deleteError.message}`);
-    }
-  }
-
   const toUpdate = input.variants.filter((v) => v.id);
   const toInsert = input.variants.filter((v) => !v.id);
 
-  for (const variant of toUpdate) {
-    const { error: updateError } = await supabase
-      .from("product_variants")
-      .update(toVariantRow(id, variant))
-      .eq("id", variant.id!);
-    if (updateError) {
-      throw new Error(`Failed to update size "${variant.label}": ${updateError.message}`);
+  // A single RPC call: the product update and every variant delete/update/
+  // insert run inside one PL/pgSQL function body (see
+  // supabase/migrations/004_atomic_writes.sql), so a failure partway
+  // through (e.g. a variant delete hitting an FK constraint) rolls back
+  // the whole write instead of leaving the product and its variants
+  // inconsistent.
+  const { error } = await supabase.rpc("update_product_atomic", {
+    p_product_id: id,
+    p_product_row: toRow(input),
+    p_variants_to_update: toUpdate.map((v) => ({ id: v.id!, ...toVariantRow(id, v) })),
+    p_variants_to_insert: toInsert.map((v) => toVariantRow(id, v)),
+    p_variant_ids_to_delete: removedIds,
+  });
+  if (error) {
+    if (error.code === "23505") {
+      throw new ProductError("A product with this slug already exists.");
     }
-  }
-
-  if (toInsert.length > 0) {
-    const { error: insertError } = await supabase
-      .from("product_variants")
-      .insert(toInsert.map((variant) => toVariantRow(id, variant)));
-    if (insertError) {
-      throw new Error(`Failed to add new sizes: ${insertError.message}`);
+    if (error.code === "23503") {
+      throw new ProductError(
+        "One of the sizes you removed has existing orders and can't be deleted — mark it unavailable instead.",
+      );
     }
+    throw new Error(`Failed to update product: ${error.message}`);
   }
 }
 

@@ -1,5 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
+import { formatPrice } from "@/lib/utils";
 import type { OrderResult } from "@/lib/services/orders/create-order";
 
 const FROM_EMAIL = "Your Neighbour <onboarding@resend.dev>";
@@ -8,7 +9,7 @@ function formatItemsList(items: OrderResult["items"]): string {
   return items
     .map(
       (item) =>
-        `${item.quantity} x ${item.productName} — $${(item.unitPrice * item.quantity).toFixed(2)}`,
+        `${item.quantity} x ${item.productName} — ${formatPrice(item.unitPrice * item.quantity)}`,
     )
     .join("\n");
 }
@@ -38,7 +39,7 @@ Thanks for your order! Here's your receipt:
 
 ${itemsList}
 
-Total: $${order.total.toFixed(2)}
+Total: ${formatPrice(order.total)}
 
 Pickup: ${order.pickupDate} at ${order.pickupTime}
 ${order.notes ? `\nYour notes: ${order.notes}\n` : ""}
@@ -60,7 +61,7 @@ Pickup: ${order.pickupDate} at ${order.pickupTime}
 Items to bake:
 ${itemsList}
 
-Total: $${order.total.toFixed(2)}${order.notes ? `\n\nCustomer notes: ${order.notes}` : ""}`,
+Total: ${formatPrice(order.total)}${order.notes ? `\n\nCustomer notes: ${order.notes}` : ""}`,
     }),
   ]);
 }

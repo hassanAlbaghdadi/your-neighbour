@@ -22,6 +22,7 @@ import {
   setProductAvailabilityAction,
   setVariantAvailabilityAction,
 } from "@/app/actions/products";
+import { formatPrice } from "@/lib/utils";
 import type {
   Category,
   Product,
@@ -33,7 +34,7 @@ function formatPriceRange(variants: ProductVariant[]): string {
   const prices = variants.map((v) => v.price);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
-  return min === max ? `$${min.toFixed(2)}` : `$${min.toFixed(2)} – $${max.toFixed(2)}`;
+  return min === max ? formatPrice(min) : `${formatPrice(min)} – ${formatPrice(max)}`;
 }
 
 export function ProductTable({
@@ -205,7 +206,7 @@ function VariantRow({ variant }: { variant: ProductVariant }) {
       <td className="px-4 py-2 pl-8 text-muted-foreground" colSpan={2}>
         {variant.label}
       </td>
-      <td className="px-4 py-2 text-foreground">${variant.price.toFixed(2)}</td>
+      <td className="px-4 py-2 text-foreground">{formatPrice(variant.price)}</td>
       <td className="px-4 py-2">
         <Switch
           checked={available}

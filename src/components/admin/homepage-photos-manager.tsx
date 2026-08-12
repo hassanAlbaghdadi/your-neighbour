@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,13 +76,14 @@ function HeroPhotoEditor({ initialHero }: { initialHero: HomepagePhoto | null })
       </p>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="aspect-4/3 w-full max-w-56 shrink-0 overflow-hidden rounded-lg bg-muted">
+        <div className="relative aspect-4/3 w-full max-w-56 shrink-0 overflow-hidden rounded-lg bg-muted">
           {hero?.image_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={hero.image_url}
               alt=""
-              className="h-full w-full object-cover"
+              fill
+              sizes="224px"
+              className="object-cover"
             />
           )}
         </div>
@@ -149,9 +151,8 @@ function GalleryPhotoCard({
 
   return (
     <div className="flex items-start gap-3 rounded-lg border border-border p-3">
-      <div className="size-16 shrink-0 overflow-hidden rounded-md bg-muted">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photo.image_url} alt="" className="h-full w-full object-cover" />
+      <div className="relative size-16 shrink-0 overflow-hidden rounded-md bg-muted">
+        <Image src={photo.image_url} alt="" fill sizes="64px" className="object-cover" />
       </div>
 
       <div className="flex-1">
@@ -209,20 +210,20 @@ function GalleryPhotosEditor({ initialGallery }: { initialGallery: HomepagePhoto
     const displayOrder = gallery.length;
     startTransition(async () => {
       const result = await addGalleryPhotoAction(imageUrl, null, displayOrder);
-      if (!result.success || !result.photo) {
+      if (!result.success || !result.data) {
         toast.error(result.error ?? "Failed to add photo.");
         return;
       }
       setGallery((prev) => [
         ...prev,
         {
-          id: result.photo!.id,
+          id: result.data!.id,
           section: "gallery",
           image_url: imageUrl,
           alt_text: null,
           display_order: displayOrder,
-          created_at: result.photo!.createdAt,
-          updated_at: result.photo!.createdAt,
+          created_at: result.data!.createdAt,
+          updated_at: result.data!.createdAt,
         },
       ]);
       toast.success("Photo added.");

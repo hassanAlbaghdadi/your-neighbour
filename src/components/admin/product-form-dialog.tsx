@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -188,10 +189,11 @@ export function ProductFormDialog({
                 <Field>
                   <FieldLabel htmlFor="image">Photo</FieldLabel>
                   {field.value && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={field.value}
                       alt=""
+                      width={96}
+                      height={96}
                       className="h-24 w-24 rounded-lg object-cover ring-1 ring-border"
                     />
                   )}
@@ -271,10 +273,11 @@ export function ProductFormDialog({
                       render={({ field: imageField }) => (
                         <div className="flex items-center gap-2">
                           {imageField.value && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <Image
                               src={imageField.value}
                               alt=""
+                              width={40}
+                              height={40}
                               className="size-10 shrink-0 rounded-md object-cover ring-1 ring-border"
                             />
                           )}

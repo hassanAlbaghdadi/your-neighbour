@@ -1,9 +1,12 @@
 import "server-only";
+import { z } from "zod";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
 import { getSettings } from "@/lib/services/settings/get-settings";
 import { sendOrderNotifications } from "@/lib/email/resend";
 import type { CreateOrderInput } from "@/lib/validations/order";
 import type { OrderStatus } from "@/types/database";
+
+const uuidSchema = z.string().uuid();
 
 export class OrderError extends Error {}
 
@@ -116,30 +119,29 @@ export async function processNewOrder(
   );
   const total = subtotal;
 
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
-    .insert({
-      id: input.id,
-      customer_name: input.customerName,
-      customer_email: input.customerEmail,
-      customer_phone: input.customerPhone,
-      pickup_date: input.pickupDate,
-      pickup_time: input.pickupTime,
-      notes: input.notes || null,
-      subtotal,
-      total,
-    })
-    .select()
-    .single();
+  // A single RPC call: the order row and its items are inserted inside one
+  // PL/pgSQL function body (see supabase/migrations/004_atomic_writes.sql),
+  // so a failure partway through rolls back the whole write instead of
+  // leaving an order with no items behind.
+  const { data: order, error: orderError } = await supabase.rpc(
+    "create_order_atomic",
+    {
+      p_order_row: {
+        id: input.id,
+        customer_name: input.customerName,
+        customer_email: input.customerEmail,
+        customer_phone: input.customerPhone,
+        pickup_date: input.pickupDate,
+        pickup_time: input.pickupTime,
+        notes: input.notes || null,
+        subtotal,
+        total,
+      },
+      p_items: orderItems,
+    },
+  );
   if (orderError || !order) {
     throw new Error(`Failed to create order: ${orderError?.message}`);
-  }
-
-  const { error: itemsError } = await supabase
-    .from("order_items")
-    .insert(orderItems.map((item) => ({ ...item, order_id: order.id })));
-  if (itemsError) {
-    throw new Error(`Failed to save order items: ${itemsError.message}`);
   }
 
   const result: OrderResult = {
@@ -174,6 +176,11 @@ export async function processNewOrder(
 }
 
 async function getExistingOrder(id: string): Promise<OrderResult | null> {
+  // input.id is already validated by createOrderInputSchema before this
+  // is reached in practice; kept here too so this function is safe to call
+  // with an unvalidated id, matching getOrderById's same defense.
+  if (!uuidSchema.safeParse(id).success) return null;
+
   const supabase = createServiceRoleClient();
 
   const { data: order, error } = await supabase

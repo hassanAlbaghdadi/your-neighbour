@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { useCart } from "@/context/cart-context";
 import { MAX_ITEM_QUANTITY } from "@/lib/validations/order";
+import { formatPrice } from "@/lib/utils";
 
 interface CartDrawerProps {
   open: boolean;
@@ -45,7 +46,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                       )}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      ${item.price.toFixed(2)}
+                      {formatPrice(item.price)}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -92,7 +93,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
           <SheetFooter className="border-t border-border">
             <div className="flex items-center justify-between text-base font-medium text-foreground">
               <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>{formatPrice(subtotal)}</span>
             </div>
             <Button asChild size="lg" onClick={() => onOpenChange(false)}>
               <Link href="/checkout">Checkout</Link>

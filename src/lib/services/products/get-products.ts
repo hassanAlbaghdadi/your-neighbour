@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
@@ -10,7 +11,10 @@ export type Product = Database["public"]["Tables"]["products"]["Row"] & {
   variants: ProductVariant[];
 };
 
-export async function getCategories(): Promise<Category[]> {
+// Wrapped in React's cache() so the root layout's call and a page's own
+// call within the same request dedupe to a single Supabase round-trip
+// instead of two.
+export const getCategories = cache(async (): Promise<Category[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
@@ -22,7 +26,7 @@ export async function getCategories(): Promise<Category[]> {
   }
 
   return data;
-}
+});
 
 export async function getProducts(): Promise<Product[]> {
   const supabase = await createClient();

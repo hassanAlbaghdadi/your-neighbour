@@ -4,6 +4,7 @@ import { getOrders } from "@/lib/services/orders/get-orders";
 import { getBakingSummary } from "@/lib/services/orders/get-baking-summary";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
 import { Badge } from "@/components/ui/badge";
+import { formatPrice, resolveSummaryDate } from "@/lib/utils";
 import type { OrderStatus } from "@/types/database";
 
 const FILTERS = ["today", "pending", "preparing", "ready", "completed"] as const;
@@ -37,8 +38,10 @@ export default async function AdminOrdersPage({
   const filter = isFilter(params.filter) ? params.filter : "today";
 
   const today = format(new Date(), "yyyy-MM-dd");
-  const summaryDate =
-    typeof params.summaryDate === "string" ? params.summaryDate : today;
+  const summaryDate = resolveSummaryDate(
+    typeof params.summaryDate === "string" ? params.summaryDate : undefined,
+    today,
+  );
 
   const [orders, bakingSummary] = await Promise.all([
     getOrders(
@@ -163,7 +166,7 @@ export default async function AdminOrdersPage({
                       {order.itemCount}
                     </td>
                     <td className="px-4 py-3 text-foreground">
-                      ${order.total.toFixed(2)}
+                      {formatPrice(order.total)}
                     </td>
                     <td className="px-4 py-3">
                       <OrderStatusSelect

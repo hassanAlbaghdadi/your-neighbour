@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { isValid, parseISO } from "date-fns"
 import type { MouseEvent } from "react"
 
 export function cn(...inputs: ClassValue[]) {
@@ -30,4 +31,32 @@ export function slugify(input: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
+}
+
+/**
+ * Falls back to `today` for anything that isn't a well-formed date string —
+ * feeding an unvalidated query param straight into date-fns#parseISO throws
+ * a RangeError on invalid input, which previously had no error boundary to
+ * catch it (crashed the whole admin dashboard on a typo'd URL).
+ */
+export function resolveSummaryDate(param: string | undefined, today: string): string {
+  if (typeof param !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(param)) {
+    return today
+  }
+  return isValid(parseISO(param)) ? param : today
+}
+
+const priceFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+})
+
+/**
+ * Centralizes the `$X.XX` display format used across cart, checkout, admin,
+ * and email receipts — previously each call site hand-rolled its own
+ * `$${x.toFixed(2)}` template, risking drift (e.g. no thousands separator
+ * on a large total).
+ */
+export function formatPrice(amount: number): string {
+  return priceFormatter.format(amount)
 }

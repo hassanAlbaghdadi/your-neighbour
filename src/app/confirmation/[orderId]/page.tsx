@@ -4,6 +4,7 @@ import { format, parseISO } from "date-fns";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getOrderById } from "@/lib/services/orders/get-order";
+import { formatPrice } from "@/lib/utils";
 
 export default async function ConfirmationPage(
   props: PageProps<"/confirmation/[orderId]">,
@@ -55,7 +56,7 @@ export default async function ConfirmationPage(
                 )}
               </span>
               <span className="text-muted-foreground">
-                ${(item.unitPrice * item.quantity).toFixed(2)}
+                {formatPrice(item.unitPrice * item.quantity)}
               </span>
             </li>
           ))}
@@ -63,7 +64,7 @@ export default async function ConfirmationPage(
 
         <div className="flex items-center justify-between border-t border-border pt-4 text-base font-medium text-foreground">
           <span>Total</span>
-          <span>${order.total.toFixed(2)}</span>
+          <span>{formatPrice(order.total)}</span>
         </div>
 
         {order.notes && (

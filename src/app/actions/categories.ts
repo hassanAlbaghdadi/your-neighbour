@@ -9,11 +9,7 @@ import {
   deleteCategory,
   CategoryError,
 } from "@/lib/services/categories/manage-categories";
-
-interface ActionResult {
-  success: boolean;
-  error?: string;
-}
+import type { ActionResult } from "@/types/action-result";
 
 export async function createCategoryAction(payload: unknown): Promise<ActionResult> {
   if (!(await requireAdmin())) return { success: false, error: "Unauthorized" };

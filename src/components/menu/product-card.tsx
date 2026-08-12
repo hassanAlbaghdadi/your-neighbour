@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ImageOff, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { track } from "@/lib/analytics";
@@ -14,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import type { Product, ProductVariant } from "@/lib/services/products/get-products";
 
@@ -81,7 +82,7 @@ function VariantSegments({
             // longer labels (e.g. "With Fresh Flowers" at 161px) already
             // exceed it and are left alone, so a 2-option size/style pair
             // with very different label lengths doesn't get stretched.
-            "relative z-10 flex min-h-10 min-w-16 items-center justify-center rounded-sm px-3.5 text-center text-sm font-medium transition-colors",
+            "relative z-10 flex min-h-11 min-w-16 items-center justify-center rounded-sm px-3.5 text-center text-sm font-medium transition-colors",
             variant.id === selectedId
               ? "font-semibold text-terracotta-700"
               : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
@@ -115,11 +116,12 @@ export function ProductCard({ product }: { product: Product }) {
     >
       <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
         {displayImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={displayImageUrl}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-105"
+            fill
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
@@ -172,7 +174,7 @@ export function ProductCard({ product }: { product: Product }) {
 
         <CardFooter className="justify-end gap-3 bg-transparent">
           <span className="text-lg font-semibold text-foreground tabular-nums">
-            ${(selectedVariant?.price ?? 0).toFixed(2)}
+            {formatPrice(selectedVariant?.price ?? 0)}
           </span>
           <Button
             variant={isOrderable ? "default" : "secondary"}

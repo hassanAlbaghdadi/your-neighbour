@@ -4,11 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { settingsSchema } from "@/lib/validations/settings";
 import { updateSettings } from "@/lib/services/settings/update-settings";
-
-interface ActionResult {
-  success: boolean;
-  error?: string;
-}
+import type { ActionResult } from "@/types/action-result";
 
 export async function updateSettingsAction(
   payload: unknown,

@@ -4,14 +4,16 @@ import { getOrderCountsByDate } from "@/lib/services/orders/get-order-counts";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 
 export default async function CheckoutPage() {
-  const settings = await getSettings();
-
   const today = new Date();
   const rangeEnd = addDays(today, 60);
-  const orderCounts = await getOrderCountsByDate(
-    format(today, "yyyy-MM-dd"),
-    format(rangeEnd, "yyyy-MM-dd"),
-  );
+
+  const [settings, orderCounts] = await Promise.all([
+    getSettings(),
+    getOrderCountsByDate(
+      format(today, "yyyy-MM-dd"),
+      format(rangeEnd, "yyyy-MM-dd"),
+    ),
+  ]);
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">

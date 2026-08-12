@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export interface StoreSettings {
@@ -18,7 +19,10 @@ const DEFAULTS: StoreSettings = {
   blackoutDates: [],
 };
 
-export async function getSettings(): Promise<StoreSettings> {
+// Wrapped in React's cache() so the root layout's call and a page's own
+// call within the same request dedupe to a single Supabase round-trip
+// instead of two.
+export const getSettings = cache(async (): Promise<StoreSettings> => {
   const supabase = await createClient();
   const { data, error } = await supabase.from("settings").select("key, value");
 
@@ -46,4 +50,4 @@ export async function getSettings(): Promise<StoreSettings> {
       (value.get("blackout_dates") as string[] | undefined) ??
       DEFAULTS.blackoutDates,
   };
-}
+});

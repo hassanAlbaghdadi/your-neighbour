@@ -17,15 +17,9 @@ import {
   reorderGalleryPhotos,
   HomepagePhotoError,
 } from "@/lib/services/homepage/manage-homepage-photos";
+import type { ActionResult } from "@/types/action-result";
 
-interface ActionResult {
-  success: boolean;
-  error?: string;
-}
-
-interface AddPhotoResult extends ActionResult {
-  photo?: { id: string; createdAt: string };
-}
+type AddPhotoResult = ActionResult<{ id: string; createdAt: string }>;
 
 export async function setHeroPhotoAction(
   imageUrl: string,
@@ -81,7 +75,7 @@ export async function addGalleryPhotoAction(
     const photo = await addGalleryPhoto(parsed.data);
     revalidatePath("/admin/homepage");
     revalidatePath("/");
-    return { success: true, photo };
+    return { success: true, data: photo };
   } catch (error) {
     if (error instanceof HomepagePhotoError) return { success: false, error: error.message };
     console.error("addGalleryPhotoAction failed:", error);

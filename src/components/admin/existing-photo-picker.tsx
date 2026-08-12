@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -30,17 +31,24 @@ export function ExistingPhotoPicker({
         ) : (
           <div className="grid max-h-64 grid-cols-4 gap-1.5 overflow-y-auto">
             {photos.map((url) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <button
                 key={url}
-                src={url}
-                alt=""
-                className="aspect-square w-full cursor-pointer rounded-md object-cover ring-1 ring-border transition-opacity hover:opacity-75"
+                type="button"
+                aria-label="Select photo"
                 onClick={() => {
                   onSelect(url);
                   setPickerOpen(false);
                 }}
-              />
+                className="relative aspect-square w-full cursor-pointer overflow-hidden rounded-md ring-1 ring-border outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <Image
+                  src={url}
+                  alt=""
+                  fill
+                  sizes="64px"
+                  className="object-cover motion-safe:transition-opacity motion-safe:duration-300 motion-safe:ease-out hover:opacity-75"
+                />
+              </button>
             ))}
           </div>
         )}

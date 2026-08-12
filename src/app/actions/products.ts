@@ -11,11 +11,7 @@ import {
   setVariantAvailability,
   ProductError,
 } from "@/lib/services/products/manage-products";
-
-interface ActionResult {
-  success: boolean;
-  error?: string;
-}
+import type { ActionResult } from "@/types/action-result";
 
 export async function createProductAction(payload: unknown): Promise<ActionResult> {
   if (!(await requireAdmin())) return { success: false, error: "Unauthorized" };

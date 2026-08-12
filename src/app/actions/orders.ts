@@ -9,12 +9,7 @@ import { updateOrderStatus } from "@/lib/services/orders/update-order-status";
 import { ORDER_STATUSES } from "@/types/database";
 import type { OrderResult } from "@/lib/services/orders/create-order";
 import type { OrderStatus } from "@/types/database";
-
-interface ActionResult<T> {
-  success: boolean;
-  error?: string;
-  data?: T;
-}
+import type { ActionResult } from "@/types/action-result";
 
 export async function createOrderAction(
   payload: unknown,
