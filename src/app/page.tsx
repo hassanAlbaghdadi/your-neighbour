@@ -55,8 +55,6 @@ export default async function HomePage() {
 
       <StoryFacts minAdvanceHours={settings.minAdvanceHours} />
 
-      <PhotoGallery photos={galleryPhotos} />
-
       <section id="menu" className="scroll-mt-16">
         <div className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6">
           <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
@@ -68,6 +66,8 @@ export default async function HomePage() {
         </div>
         <MenuGrid categories={categories} products={products} />
       </section>
+
+      <PhotoGallery photos={galleryPhotos} />
     </div>
   );
 }
