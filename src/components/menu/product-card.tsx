@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ImageOff, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -189,6 +190,12 @@ export function ProductCard({ product }: { product: Product }) {
               });
               toast.success(`Added ${product.name} to cart`, {
                 description: selectedVariant.label,
+              });
+              track("add_to_cart", {
+                product: product.name,
+                sawFounderNote:
+                  sessionStorage.getItem("tracked:founder_note_view") ===
+                  "1",
               });
             }}
           >

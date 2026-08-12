@@ -12,7 +12,10 @@ interface HeroSectionProps {
 
 export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
   return (
-    <section className="relative h-[92svh] max-h-[900px] min-h-[520px] w-full overflow-hidden bg-espresso-900">
+    <section
+      id="hero"
+      className="relative h-[92svh] max-h-[900px] min-h-[520px] w-full overflow-hidden bg-espresso-900"
+    >
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

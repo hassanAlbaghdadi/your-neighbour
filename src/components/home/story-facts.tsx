@@ -18,17 +18,17 @@ export function StoryFacts({ minAdvanceHours }: StoryFactsProps) {
           from the oven.
         </p>
 
-        <dl className="mx-auto mt-10 grid max-w-2xl grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <dl className="mx-auto mt-10 grid max-w-2xl grid-cols-3 divide-x divide-border border-y border-border">
           {facts.map((fact) => (
             <div
               key={fact.label}
-              className="flex flex-col items-center gap-1 py-4 text-center sm:py-2"
+              className="flex flex-col items-center gap-1 px-1 py-3 text-center"
             >
               <dt className="sr-only">{fact.label}</dt>
-              <dd className="font-heading text-lg font-semibold text-terracotta-600">
+              <dd className="font-heading text-base font-semibold text-terracotta-600 sm:text-lg">
                 {fact.value}
               </dd>
-              <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase sm:text-xs">
                 {fact.label}
               </span>
             </div>

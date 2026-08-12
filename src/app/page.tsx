@@ -7,6 +7,7 @@ import { getSettings } from "@/lib/services/settings/get-settings";
 import { getHomepagePhotos } from "@/lib/services/homepage/get-homepage-photos";
 import { MenuGrid } from "@/components/menu/menu-grid";
 import { HeroSection } from "@/components/home/hero-section";
+import { FounderNote } from "@/components/home/founder-note";
 import { StoryFacts } from "@/components/home/story-facts";
 import { PhotoGallery } from "@/components/home/photo-gallery";
 
@@ -49,6 +50,8 @@ export default async function HomePage() {
   return (
     <div className="flex flex-1 flex-col">
       <HeroSection imageUrl={heroImageUrl} imageAlt={heroImageAlt} />
+
+      <FounderNote />
 
       <StoryFacts minAdvanceHours={settings.minAdvanceHours} />
 

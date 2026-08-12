@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/menu/product-card";
+import { trackOnce } from "@/lib/analytics";
 import type { Category, Product } from "@/lib/services/products/get-products";
 
 interface MenuGridProps {
@@ -12,14 +13,31 @@ interface MenuGridProps {
 
 export function MenuGrid({ categories, products }: MenuGridProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     if (!activeCategory) return products;
     return products.filter((product) => product.category?.id === activeCategory);
   }, [products, activeCategory]);
 
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          trackOnce("menu_view");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+    <div ref={rootRef} className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-8 flex flex-wrap gap-2">
         <Button
           variant={activeCategory === null ? "default" : "outline"}
