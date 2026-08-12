@@ -11,17 +11,55 @@ interface GalleryPhoto {
   alt: string;
 }
 
+const MOBILE_SIZES = "(min-width: 640px) 38vw, 72vw";
+const HERO_SIZES = `(min-width: 1024px) 45vw, ${MOBILE_SIZES}`;
+const SINGLE_SIZES = `(min-width: 1024px) 22vw, ${MOBILE_SIZES}`;
+const FULL_SIZES = `(min-width: 1024px) 90vw, ${MOBILE_SIZES}`;
+
 // One 2x2 hero + four 1x1 cells fill all 8 cells of a 4-col x 2-row block
 // exactly, so the pattern seams cleanly into the next block for any photo
 // count — cycled by index like the mobile caption number below, not tied to
 // a photo's actual content, since the admin can upload photos in any order.
 const BENTO_CELLS = [
-  { span: "lg:col-span-2 lg:row-span-2", sizes: "(min-width: 1024px) 45vw, (min-width: 640px) 38vw, 72vw" },
-  { span: "lg:col-span-1 lg:row-span-1", sizes: "(min-width: 1024px) 22vw, (min-width: 640px) 38vw, 72vw" },
-  { span: "lg:col-span-1 lg:row-span-1", sizes: "(min-width: 1024px) 22vw, (min-width: 640px) 38vw, 72vw" },
-  { span: "lg:col-span-1 lg:row-span-1", sizes: "(min-width: 1024px) 22vw, (min-width: 640px) 38vw, 72vw" },
-  { span: "lg:col-span-1 lg:row-span-1", sizes: "(min-width: 1024px) 22vw, (min-width: 640px) 38vw, 72vw" },
+  { span: "lg:col-span-2 lg:row-span-2", sizes: HERO_SIZES },
+  { span: "lg:col-span-1 lg:row-span-1", sizes: SINGLE_SIZES },
+  { span: "lg:col-span-1 lg:row-span-1", sizes: SINGLE_SIZES },
+  { span: "lg:col-span-1 lg:row-span-1", sizes: SINGLE_SIZES },
+  { span: "lg:col-span-1 lg:row-span-1", sizes: SINGLE_SIZES },
 ];
+
+// BENTO_CELLS only tiles a 4x2 block cleanly in groups of 5 — a photo count
+// that isn't a multiple of 5 leaves a trailing group of 1-4 photos that,
+// cycled through the same pattern, stops partway through a block and leaves
+// empty grid cells (e.g. 9 photos = one full block + a hero-plus-3 block,
+// short one cell). Each of these is hand-fit to tile its own 4x2 area with
+// zero leftover, so the grid always ends flush regardless of count.
+const REMAINDER_CELLS: Record<number, { span: string; sizes: string }[]> = {
+  1: [{ span: "lg:col-span-4 lg:row-span-2", sizes: FULL_SIZES }],
+  2: [
+    { span: "lg:col-span-2 lg:row-span-2", sizes: HERO_SIZES },
+    { span: "lg:col-span-2 lg:row-span-2", sizes: HERO_SIZES },
+  ],
+  3: [
+    { span: "lg:col-span-2 lg:row-span-2", sizes: HERO_SIZES },
+    { span: "lg:col-span-1 lg:row-span-2", sizes: SINGLE_SIZES },
+    { span: "lg:col-span-1 lg:row-span-2", sizes: SINGLE_SIZES },
+  ],
+  4: [
+    { span: "lg:col-span-2 lg:row-span-1", sizes: HERO_SIZES },
+    { span: "lg:col-span-2 lg:row-span-1", sizes: HERO_SIZES },
+    { span: "lg:col-span-2 lg:row-span-1", sizes: HERO_SIZES },
+    { span: "lg:col-span-2 lg:row-span-1", sizes: HERO_SIZES },
+  ],
+};
+
+function getBentoCell(index: number, total: number) {
+  const completeBlockCount = Math.floor(total / BENTO_CELLS.length) * BENTO_CELLS.length;
+  if (index < completeBlockCount) {
+    return BENTO_CELLS[index % BENTO_CELLS.length];
+  }
+  return REMAINDER_CELLS[total - completeBlockCount][index - completeBlockCount];
+}
 
 export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -39,30 +77,32 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
 
   return (
     <section className="border-b border-border bg-ivory-50">
-      <div className="mx-auto w-full max-w-6xl py-14">
-        <div className="px-4 sm:px-6">
-          <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
-            From the kitchen
-          </p>
-          <h2 className="mt-2 font-heading text-2xl font-semibold text-foreground sm:text-3xl">
-            A closer look
-          </h2>
-        </div>
+      <div className="mx-auto w-full max-w-6xl px-4 pt-14 sm:px-6">
+        <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
+          From the kitchen
+        </p>
+        <h2 className="mt-2 font-heading text-2xl font-semibold text-foreground sm:text-3xl">
+          A closer look
+        </h2>
+      </div>
 
-        {/* Below lg: the same native scroll-snap filmstrip as before — no
-            JS-driven motion, nothing that can jank, touch-pan-x keeps a
-            diagonal swipe from fighting the page's own vertical scroll.
-            From lg: the track becomes a real CSS grid (overflow-visible,
-            snap disabled) and each figure's lg: col/row-span turns it into
-            a bento cell instead of a carousel card — desktop finally uses
-            its width instead of showing the same filmstrip, scaled up. */}
-        <div
-          ref={trackRef}
-          onScroll={handleScroll}
-          className="mt-8 flex touch-pan-x items-stretch gap-4 overflow-x-auto scroll-px-4 px-4 pb-2 snap-x snap-mandatory [scrollbar-width:none] sm:gap-5 sm:scroll-px-6 sm:px-6 sm:[scrollbar-width:thin] [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-1.5 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-thumb]:bg-terracotta-600/30 sm:[&::-webkit-scrollbar-track]:bg-transparent lg:grid lg:auto-rows-[11rem] lg:grid-cols-4 lg:gap-4 lg:overflow-visible lg:px-6 lg:pb-0 lg:snap-none lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden"
-        >
+      {/* Full-bleed, unlike the rest of the page's max-w-6xl column — matches
+          the hero's edge-to-edge treatment instead of leaving the photos
+          boxed into the same narrow column as the menu text. Below lg: the
+          same native scroll-snap filmstrip as before — no JS-driven motion,
+          nothing that can jank, touch-pan-x keeps a diagonal swipe from
+          fighting the page's own vertical scroll. From lg: the track becomes
+          a real CSS grid (overflow-visible, snap disabled) and each figure's
+          lg: col/row-span turns it into a bento cell instead of a carousel
+          card; auto-rows grows at xl/2xl so cells don't go squat as the
+          now-unbounded grid gets wider. */}
+      <div
+        ref={trackRef}
+        onScroll={handleScroll}
+        className="mt-8 flex touch-pan-x items-stretch gap-4 overflow-x-auto scroll-px-4 px-4 pb-2 snap-x snap-mandatory [scrollbar-width:none] sm:gap-5 sm:scroll-px-6 sm:px-6 sm:[scrollbar-width:thin] [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-1.5 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-thumb]:bg-terracotta-600/30 sm:[&::-webkit-scrollbar-track]:bg-transparent lg:grid lg:auto-rows-[11rem] lg:grid-cols-4 lg:gap-4 lg:overflow-visible lg:px-8 lg:pb-0 lg:snap-none lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden xl:auto-rows-[13rem] xl:px-12 2xl:auto-rows-[15rem] 2xl:px-16"
+      >
           {photos.map((photo, index) => {
-            const cell = BENTO_CELLS[index % BENTO_CELLS.length];
+            const cell = getBentoCell(index, photos.length);
             return (
               <figure
                 // Index, not src — the admin-curated gallery list doesn't
@@ -115,6 +155,7 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
           })}
         </div>
 
+      <div className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6">
         {photos.length > 1 && (
           <div className="mt-3 lg:hidden">
             <div className="flex items-center justify-center gap-1.5" aria-hidden>
