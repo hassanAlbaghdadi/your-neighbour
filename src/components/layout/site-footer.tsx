@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { scrollToAnchor } from "@/lib/utils";
 
 interface SiteFooterProps {
   businessName: string;
@@ -33,6 +36,7 @@ export function SiteFooter({
                 <li key={category.id}>
                   <Link
                     href="/#menu"
+                    onClick={(e) => scrollToAnchor(e, "menu")}
                     className="text-cream-50/80 transition-colors hover:text-cream-50"
                   >
                     {category.name}

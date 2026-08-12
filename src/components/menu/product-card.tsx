@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ImageOff, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -107,7 +108,10 @@ export function ProductCard({ product }: { product: Product }) {
   const displayImageUrl = selectedVariant?.image_url ?? product.image_url;
 
   return (
-    <Card className="group pt-0 transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[0_16px_32px_-12px_rgba(42,33,29,0.18),0_4px_10px_-4px_rgba(42,33,29,0.1)]">
+    <Card
+      size="sm"
+      className="group pt-0 transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[0_16px_32px_-12px_rgba(42,33,29,0.18),0_4px_10px_-4px_rgba(42,33,29,0.1)]"
+    >
       <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
         {displayImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -135,9 +139,9 @@ export function ProductCard({ product }: { product: Product }) {
             {product.category.name}
           </p>
         )}
-        <CardTitle className="text-xl">{product.name}</CardTitle>
+        <CardTitle className="text-lg">{product.name}</CardTitle>
         {product.description && (
-          <CardDescription className="line-clamp-3">
+          <CardDescription className="line-clamp-2">
             {product.description}
           </CardDescription>
         )}
@@ -145,7 +149,7 @@ export function ProductCard({ product }: { product: Product }) {
 
       {product.allergens && (
         <CardContent>
-          <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+          <span className="text-[11px] font-semibold text-espresso-700 uppercase">
             {formatAllergenTags(product.allergens)}
           </span>
         </CardContent>
@@ -154,7 +158,7 @@ export function ProductCard({ product }: { product: Product }) {
       {/* Selector and price/CTA are pinned to the bottom as one group, so they
           always sit adjacent to each other regardless of how much (or how
           little) description/allergen text a product has above them. */}
-      <div className="mt-auto flex flex-col gap-3">
+      <div className="mt-auto flex flex-col gap-2">
         {product.variants.length > 1 && (
           <CardContent>
             <VariantSegments
@@ -170,11 +174,10 @@ export function ProductCard({ product }: { product: Product }) {
             ${(selectedVariant?.price ?? 0).toFixed(2)}
           </span>
           <Button
-            size="sm"
             variant={isOrderable ? "default" : "secondary"}
             disabled={!isOrderable || !selectedVariant}
-            onClick={() =>
-              selectedVariant &&
+            onClick={() => {
+              if (!selectedVariant) return;
               addItem({
                 productId: product.id,
                 variantId: selectedVariant.id,
@@ -183,8 +186,11 @@ export function ProductCard({ product }: { product: Product }) {
                 slug: product.slug,
                 price: selectedVariant.price,
                 imageUrl: displayImageUrl,
-              })
-            }
+              });
+              toast.success(`Added ${product.name} to cart`, {
+                description: selectedVariant.label,
+              });
+            }}
           >
             {isOrderable ? (
               <>
