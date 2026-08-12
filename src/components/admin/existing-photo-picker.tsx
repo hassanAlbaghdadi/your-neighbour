@@ -25,11 +25,11 @@ export function ExistingPhotoPicker({
           {!compact && "Choose existing"}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64">
+      <PopoverContent className="w-64 max-h-(--radix-popover-content-available-height) overflow-y-auto">
         {photos.length === 0 ? (
           <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
         ) : (
-          <div className="grid max-h-64 grid-cols-4 gap-1.5 overflow-y-auto">
+          <div className="grid grid-cols-4 gap-1.5">
             {photos.map((url) => (
               <button
                 key={url}

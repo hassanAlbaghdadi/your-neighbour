@@ -109,20 +109,42 @@ export function ProductCard({ product }: { product: Product }) {
   const isOrderable = product.is_available && selectedVariant?.is_available;
   const displayImageUrl = selectedVariant?.image_url ?? product.image_url;
 
+  // Every variant's photo (deduped — most variants share the product photo,
+  // only ones with their own override differ) rendered stacked and
+  // crossfaded, instead of swapping a single <Image>'s src. Swapping src on
+  // select means the browser hasn't fetched that URL yet, so there was a
+  // visible delay before the new photo appeared; pre-mounting all of them
+  // means the non-selected ones are already loaded (still lazy, since
+  // they're all in the same on-screen position as the visible one) by the
+  // time a size is picked.
+  const variantImageUrls = [
+    ...new Set(
+      product.variants
+        .map((v) => v.image_url ?? product.image_url)
+        .filter((url): url is string => !!url),
+    ),
+  ];
+
   return (
     <Card
       size="sm"
       className="group pt-0 transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[0_16px_32px_-12px_rgba(42,33,29,0.18),0_4px_10px_-4px_rgba(42,33,29,0.1)]"
     >
       <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
-        {displayImageUrl ? (
-          <Image
-            src={displayImageUrl}
-            alt={product.name}
-            fill
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-105"
-          />
+        {variantImageUrls.length > 0 ? (
+          variantImageUrls.map((url) => (
+            <Image
+              key={url}
+              src={url}
+              alt={product.name}
+              fill
+              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+              className={cn(
+                "object-cover transition-[opacity,transform] motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-105",
+                url === displayImageUrl ? "opacity-100" : "opacity-0",
+              )}
+            />
+          ))
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
             <ImageOff className="size-6" />
