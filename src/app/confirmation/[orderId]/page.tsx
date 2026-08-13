@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format, parseISO } from "date-fns";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ClearCartOnSuccess } from "@/components/checkout/clear-cart-on-success";
 import { getOrderById } from "@/lib/services/orders/get-order";
 import { formatPrice } from "@/lib/utils";
 
@@ -16,17 +17,35 @@ export default async function ConfirmationPage(
     notFound();
   }
 
+  const isPaid = order.paymentStatus === "paid";
+
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6">
+      {isPaid && <ClearCartOnSuccess />}
       <div className="flex flex-col items-center text-center">
-        <CheckCircle2 className="size-12 text-primary" />
-        <h1 className="mt-4 font-heading text-3xl font-semibold text-foreground">
-          Order Confirmed
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Thanks, {order.customerName.split(" ")[0]} — we&apos;ll have it
-          ready for pickup.
-        </p>
+        {isPaid ? (
+          <>
+            <CheckCircle2 className="size-12 text-primary" />
+            <h1 className="mt-4 font-heading text-3xl font-semibold text-foreground">
+              Order Confirmed
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Thanks, {order.customerName.split(" ")[0]} — we&apos;ll have it
+              ready for pickup.
+            </p>
+          </>
+        ) : (
+          <>
+            <Clock className="size-12 text-muted-foreground" />
+            <h1 className="mt-4 font-heading text-3xl font-semibold text-foreground">
+              Confirming payment…
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              This usually only takes a few seconds. Refresh this page if it
+              doesn&apos;t update.
+            </p>
+          </>
+        )}
       </div>
 
       <div className="mt-8 rounded-xl border border-border bg-card p-6">
@@ -76,7 +95,8 @@ export default async function ConfirmationPage(
       </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Order #{order.id.slice(0, 8)} · Status: {order.status}
+        Order #{order.id.slice(0, 8)} · Status: {order.status} · Payment:{" "}
+        {isPaid ? "Paid" : "Pending"}
       </p>
 
       <div className="mt-8 flex justify-center">

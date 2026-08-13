@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { CheckoutForm } from "./checkout-form";
 import type { StoreSettings } from "@/lib/services/settings/get-settings";
@@ -76,6 +76,8 @@ async function fillCheckoutForm() {
 }
 
 describe("CheckoutForm double-submit protection", () => {
+  const originalLocation = window.location;
+
   beforeEach(() => {
     pushMock.mockClear();
     clearCartMock.mockClear();
@@ -84,11 +86,33 @@ describe("CheckoutForm double-submit protection", () => {
       () =>
         new Promise((resolve) => {
           setTimeout(
-            () => resolve({ success: true, data: { id: "order-1" } }),
+            () =>
+              resolve({
+                success: true,
+                data: {
+                  order: { id: "order-1" },
+                  checkoutUrl: "https://checkout.stripe.com/session123",
+                },
+              }),
             20,
           );
         }),
     );
+
+    // checkout-form redirects via a full navigation (window.location.href =
+    // ...) rather than router.push once Stripe is in the loop — jsdom
+    // doesn't implement real navigation, so swap in a plain, writable stub.
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...originalLocation, href: originalLocation.href },
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: originalLocation,
+    });
   });
 
   it("only places one order when the submit button is clicked twice rapidly", async () => {
@@ -99,7 +123,9 @@ describe("CheckoutForm double-submit protection", () => {
     fireEvent.click(submitButton);
     fireEvent.click(submitButton);
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(window.location.href).toBe("https://checkout.stripe.com/session123"),
+    );
 
     expect(createOrderActionMock).toHaveBeenCalledTimes(1);
   });

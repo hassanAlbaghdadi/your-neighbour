@@ -21,6 +21,8 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "Cancelled",
 ];
 
+export type PaymentStatus = "unpaid" | "paid";
+
 export type Json =
   | string
   | number
@@ -138,6 +140,8 @@ export interface Database {
           subtotal: number;
           total: number;
           status: OrderStatus;
+          payment_status: PaymentStatus;
+          stripe_checkout_session_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -152,6 +156,8 @@ export interface Database {
           subtotal: number;
           total: number;
           status?: OrderStatus;
+          payment_status?: PaymentStatus;
+          stripe_checkout_session_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -255,6 +261,7 @@ export interface Database {
         Args: {
           p_order_row: Json;
           p_items: Json;
+          p_max_orders_per_day: number;
         };
         Returns: Database["public"]["Tables"]["orders"]["Row"];
       };

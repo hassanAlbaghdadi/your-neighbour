@@ -22,10 +22,6 @@ vi.mock("@/lib/services/settings/get-settings", () => ({
   })),
 }));
 
-vi.mock("@/lib/email/resend", () => ({
-  sendOrderNotifications: vi.fn(async () => {}),
-}));
-
 const { processNewOrder } = await import("./create-order");
 
 const VARIANT_ID = "22222222-2222-4222-8222-222222222222";
@@ -71,6 +67,7 @@ function setupSupabaseMocks({
       subtotal: 16,
       total: 16,
       status: "Pending",
+      payment_status: "unpaid",
     },
     error: null,
   },
@@ -124,6 +121,7 @@ describe("processNewOrder", () => {
 
     expect(result.id).toBe(baseInput.id);
     expect(result.total).toBe(16);
+    expect(result.paymentStatus).toBe("unpaid");
     expect(rpcMock).toHaveBeenCalledTimes(1);
     expect(rpcMock).toHaveBeenCalledWith(
       "create_order_atomic",
@@ -135,6 +133,10 @@ describe("processNewOrder", () => {
             quantity: 2,
           }),
         ]),
+        // The RPC re-checks this itself under a per-pickup-date lock — the
+        // count query earlier in this function is only a fast pre-check,
+        // not the actual guarantee. See 006_atomic_capacity_check.sql.
+        p_max_orders_per_day: 50,
       }),
     );
     // The old two-call path (`.from("order_items").insert(...)`) is gone —
@@ -152,6 +154,19 @@ describe("processNewOrder", () => {
     );
   });
 
+  it("surfaces a friendly error when the RPC's own capacity re-check loses the race", async () => {
+    // Simulates two concurrent requests both passing the fast pre-check
+    // (count query mocked to 0 in setupSupabaseMocks) but the RPC's
+    // atomic, locked re-check catching the one that would oversell.
+    setupSupabaseMocks({
+      rpcResult: { data: null, error: { message: "CAPACITY_FULL" } },
+    });
+
+    await expect(processNewOrder(baseInput)).rejects.toThrow(
+      "Sorry, that pickup date is fully booked. Please choose another date.",
+    );
+  });
+
   it("short-circuits via getExistingOrder without calling the RPC again", async () => {
     setupSupabaseMocks({
       existingOrder: {
@@ -165,6 +180,7 @@ describe("processNewOrder", () => {
         subtotal: 16,
         total: 16,
         status: "Pending",
+        payment_status: "unpaid",
       },
     });
 

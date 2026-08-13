@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const processNewOrderMock = vi.fn();
+const createCheckoutSessionMock = vi.fn();
+const releaseUnstartedReservationMock = vi.fn();
 const getUserMock = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -12,6 +14,14 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/services/orders/create-order", () => ({
   processNewOrder: (...args: unknown[]) => processNewOrderMock(...args),
   OrderError: class OrderError extends Error {},
+}));
+vi.mock("@/lib/services/orders/create-checkout-session", () => ({
+  createCheckoutSessionForOrder: (...args: unknown[]) =>
+    createCheckoutSessionMock(...args),
+}));
+vi.mock("@/lib/services/orders/release-unpaid-reservation", () => ({
+  releaseUnstartedReservation: (...args: unknown[]) =>
+    releaseUnstartedReservationMock(...args),
 }));
 vi.mock("@/lib/services/orders/update-order-status", () => ({
   updateOrderStatus: vi.fn(async () => {}),
@@ -35,15 +45,43 @@ const validPayload = {
 describe("createOrderAction", () => {
   beforeEach(() => {
     processNewOrderMock.mockReset();
+    createCheckoutSessionMock.mockReset();
+    releaseUnstartedReservationMock.mockReset();
   });
 
-  it("returns the { success: true, data } shape on a successful order", async () => {
-    const order = { id: validPayload.id, total: 8 };
+  it("creates a checkout session and returns its url for an unpaid order", async () => {
+    const order = { id: validPayload.id, total: 8, paymentStatus: "unpaid" };
+    processNewOrderMock.mockResolvedValue(order);
+    createCheckoutSessionMock.mockResolvedValue("https://checkout.stripe.com/session123");
+
+    const result = await createOrderAction(validPayload);
+
+    expect(result).toEqual({
+      success: true,
+      data: { order, checkoutUrl: "https://checkout.stripe.com/session123" },
+    });
+    expect(createCheckoutSessionMock).toHaveBeenCalledWith(order);
+  });
+
+  it("skips checkout session creation when the order is already paid", async () => {
+    const order = { id: validPayload.id, total: 8, paymentStatus: "paid" };
     processNewOrderMock.mockResolvedValue(order);
 
     const result = await createOrderAction(validPayload);
 
-    expect(result).toEqual({ success: true, data: order });
+    expect(result).toEqual({ success: true, data: { order, checkoutUrl: null } });
+    expect(createCheckoutSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("releases the reservation and surfaces the error when checkout session creation fails", async () => {
+    const order = { id: validPayload.id, total: 8, paymentStatus: "unpaid" };
+    processNewOrderMock.mockResolvedValue(order);
+    createCheckoutSessionMock.mockRejectedValue(new Error("Stripe is down"));
+
+    const result = await createOrderAction(validPayload);
+
+    expect(result.success).toBe(false);
+    expect(releaseUnstartedReservationMock).toHaveBeenCalledWith(order.id);
   });
 
   it("returns the { success: false, error } shape on invalid input", async () => {

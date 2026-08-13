@@ -2,9 +2,8 @@ import "server-only";
 import { z } from "zod";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
 import { getSettings } from "@/lib/services/settings/get-settings";
-import { sendOrderNotifications } from "@/lib/email/resend";
 import type { CreateOrderInput } from "@/lib/validations/order";
-import type { OrderStatus } from "@/types/database";
+import type { OrderStatus, PaymentStatus } from "@/types/database";
 
 const uuidSchema = z.string().uuid();
 
@@ -28,6 +27,7 @@ export interface OrderResult {
   subtotal: number;
   total: number;
   status: OrderStatus;
+  paymentStatus: PaymentStatus;
   items: OrderResultItem[];
 }
 
@@ -61,6 +61,10 @@ export async function processNewOrder(
 
   const supabase = createServiceRoleClient();
 
+  // Fast, friendly pre-check — not the actual guarantee. Two requests for
+  // a nearly-full date could both pass this and still both reach the RPC
+  // below; create_order_atomic re-checks the same limit under a
+  // per-pickup-date lock, which is what actually prevents overselling.
   const { count, error: countError } = await supabase
     .from("orders")
     .select("id", { count: "exact", head: true })
@@ -122,7 +126,10 @@ export async function processNewOrder(
   // A single RPC call: the order row and its items are inserted inside one
   // PL/pgSQL function body (see supabase/migrations/004_atomic_writes.sql),
   // so a failure partway through rolls back the whole write instead of
-  // leaving an order with no items behind.
+  // leaving an order with no items behind. It also re-checks
+  // p_max_orders_per_day itself under a per-pickup-date lock (see
+  // 006_atomic_capacity_check.sql) — that's the actual capacity
+  // guarantee; the count query above is only a fast pre-check.
   const { data: order, error: orderError } = await supabase.rpc(
     "create_order_atomic",
     {
@@ -138,8 +145,14 @@ export async function processNewOrder(
         total,
       },
       p_items: orderItems,
+      p_max_orders_per_day: settings.maxOrdersPerDay,
     },
   );
+  if (orderError?.message === "CAPACITY_FULL") {
+    throw new OrderError(
+      "Sorry, that pickup date is fully booked. Please choose another date.",
+    );
+  }
   if (orderError || !order) {
     throw new Error(`Failed to create order: ${orderError?.message}`);
   }
@@ -155,6 +168,7 @@ export async function processNewOrder(
     subtotal: order.subtotal,
     total: order.total,
     status: order.status,
+    paymentStatus: order.payment_status,
     items: orderItems.map((item) => ({
       productName: item.product_name,
       variantLabel: item.variant_label,
@@ -163,14 +177,9 @@ export async function processNewOrder(
     })),
   };
 
-  sendOrderNotifications(result, settings.contactEmail, settings.businessName).catch(
-    (error: unknown) => {
-      console.error(
-        `Failed to send order notification emails for ${order.id}:`,
-        error,
-      );
-    },
-  );
+  // Confirmation emails wait for the Stripe webhook to confirm payment
+  // (see mark-order-paid.ts) — sending them here would tell a customer
+  // their order is "confirmed" before they've actually paid for it.
 
   return result;
 }
@@ -212,6 +221,7 @@ async function getExistingOrder(id: string): Promise<OrderResult | null> {
     subtotal: order.subtotal,
     total: order.total,
     status: order.status,
+    paymentStatus: order.payment_status,
     items: (items ?? []).map((item) => ({
       productName: item.product_name,
       variantLabel: item.variant_label,

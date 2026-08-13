@@ -5,15 +5,24 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createOrderInputSchema } from "@/lib/validations/order";
 import { processNewOrder, OrderError } from "@/lib/services/orders/create-order";
+import { createCheckoutSessionForOrder } from "@/lib/services/orders/create-checkout-session";
+import { releaseUnstartedReservation } from "@/lib/services/orders/release-unpaid-reservation";
 import { updateOrderStatus } from "@/lib/services/orders/update-order-status";
 import { ORDER_STATUSES } from "@/types/database";
 import type { OrderResult } from "@/lib/services/orders/create-order";
 import type { OrderStatus } from "@/types/database";
 import type { ActionResult } from "@/types/action-result";
 
+export interface CreateOrderResult {
+  order: OrderResult;
+  // null only when the order was already paid (an idempotent resubmit
+  // after a successful payment) — there's nothing left to check out.
+  checkoutUrl: string | null;
+}
+
 export async function createOrderAction(
   payload: unknown,
-): Promise<ActionResult<OrderResult>> {
+): Promise<ActionResult<CreateOrderResult>> {
   const parsed = createOrderInputSchema.safeParse(payload);
   if (!parsed.success) {
     return {
@@ -24,7 +33,20 @@ export async function createOrderAction(
 
   try {
     const order = await processNewOrder(parsed.data);
-    return { success: true, data: order };
+    if (order.paymentStatus === "paid") {
+      return { success: true, data: { order, checkoutUrl: null } };
+    }
+
+    try {
+      const checkoutUrl = await createCheckoutSessionForOrder(order);
+      return { success: true, data: { order, checkoutUrl } };
+    } catch (checkoutError) {
+      // No Stripe session was ever created, so nothing will ever expire it
+      // — release the pickup-capacity slot this order reserved ourselves
+      // rather than leaving it stuck for good.
+      await releaseUnstartedReservation(order.id);
+      throw checkoutError;
+    }
   } catch (error) {
     if (error instanceof OrderError) {
       return { success: false, error: error.message };

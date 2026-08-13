@@ -49,6 +49,7 @@ export async function getOrderById(id: string): Promise<OrderResult | null> {
     subtotal: order.subtotal,
     total: order.total,
     status: order.status,
+    paymentStatus: order.payment_status,
     items: (items ?? []).map((item) => ({
       productName: item.product_name,
       variantLabel: item.variant_label,

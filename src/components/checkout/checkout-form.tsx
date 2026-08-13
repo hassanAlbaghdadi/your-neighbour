@@ -143,8 +143,16 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
       return;
     }
 
+    // Cart is deliberately left intact here — the order is only reserved,
+    // not yet paid. It's cleared once the customer actually lands back on
+    // the confirmation page with a paid order (see ClearCartOnSuccess).
+    if (result.data.checkoutUrl) {
+      window.location.href = result.data.checkoutUrl;
+      return;
+    }
+
     clearCart();
-    router.push(`/confirmation/${result.data.id}`);
+    router.push(`/confirmation/${result.data.order.id}`);
   }
 
   // A named handler, not `onSubmit={handleSubmit(onSubmit)}` inline in JSX:
