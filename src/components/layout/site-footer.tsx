@@ -24,16 +24,14 @@ export function SiteFooter({
     <footer className="bg-espresso-900 text-cream-50">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 sm:flex-row sm:items-start sm:justify-between sm:px-6">
         <div>
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="block">
             <Image
-              src="/brand/mark-white.png"
-              alt=""
-              width={28}
-              height={28}
+              src="/brand/logo-full-white.png"
+              alt={businessName}
+              width={437}
+              height={233}
+              className="h-24 w-auto"
             />
-            <span className="font-heading text-lg font-semibold">
-              {businessName}
-            </span>
           </Link>
           <p className="mt-3 max-w-xs text-sm text-cream-50/70">
             Small-batch baked goods, made to order for local pickup.
