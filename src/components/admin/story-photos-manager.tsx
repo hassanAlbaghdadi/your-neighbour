@@ -12,39 +12,53 @@ import { PhotoListItemCard } from "@/components/admin/photo-list-item-card";
 import { useExistingPhotos } from "@/lib/hooks/use-existing-photos";
 import { usePhotoUpload } from "@/lib/hooks/use-photo-upload";
 import {
-  setHeroPhotoAction,
-  clearHeroPhotoAction,
-  addGalleryPhotoAction,
-  updateGalleryPhotoAltAction,
-  deleteGalleryPhotoAction,
-  reorderGalleryPhotosAction,
-} from "@/app/actions/homepage-photos";
-import type { HomepagePhoto } from "@/lib/services/homepage/get-homepage-photos";
+  setStorySinglePhotoAction,
+  clearStorySinglePhotoAction,
+  addStoryListPhotoAction,
+  updateStoryListPhotoAltAction,
+  deleteStoryListPhotoAction,
+  reorderStoryListPhotosAction,
+} from "@/app/actions/story-photos";
+import type {
+  StorySingleSection,
+  StoryListSection,
+} from "@/lib/services/story/manage-story-photos";
+import type { StoryPhoto } from "@/lib/services/story/get-story-photos";
 
-function HeroPhotoEditor({ initialHero }: { initialHero: HomepagePhoto | null }) {
-  const [hero, setHero] = useState(initialHero);
-  const [altDraft, setAltDraft] = useState(initialHero?.alt_text ?? "");
+function SinglePhotoEditor({
+  section,
+  title,
+  description,
+  initialPhoto,
+}: {
+  section: StorySingleSection;
+  title: string;
+  description: string;
+  initialPhoto: StoryPhoto | null;
+}) {
+  const [photo, setPhoto] = useState(initialPhoto);
+  const [altDraft, setAltDraft] = useState(initialPhoto?.alt_text ?? "");
   const [isPending, startTransition] = useTransition();
   const existingPhotos = useExistingPhotos(true);
   const { uploading, upload } = usePhotoUpload();
 
-  function saveHero(imageUrl: string, altText: string) {
+  function save(imageUrl: string, altText: string) {
     startTransition(async () => {
-      const result = await setHeroPhotoAction(imageUrl, altText || null);
+      const result = await setStorySinglePhotoAction(section, imageUrl, altText || null);
       if (!result.success) {
-        toast.error(result.error ?? "Failed to set hero photo.");
+        toast.error(result.error ?? "Failed to set photo.");
         return;
       }
-      setHero({
-        id: hero?.id ?? "pending",
-        section: "hero",
+      setPhoto({
+        id: photo?.id ?? "pending",
+        section,
         image_url: imageUrl,
         alt_text: altText || null,
         display_order: 0,
-        created_at: hero?.created_at ?? new Date().toISOString(),
+        created_at: photo?.created_at ?? new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-      toast.success("Hero photo updated.");
+      toast.success("Photo updated.");
     });
   }
 
@@ -52,35 +66,32 @@ function HeroPhotoEditor({ initialHero }: { initialHero: HomepagePhoto | null })
     const file = e.target.files?.[0];
     if (!file) return;
     const url = await upload(file);
-    if (url) saveHero(url, altDraft);
+    if (url) save(url, altDraft);
   }
 
   function handleClear() {
     startTransition(async () => {
-      const result = await clearHeroPhotoAction();
+      const result = await clearStorySinglePhotoAction(section);
       if (!result.success) {
-        toast.error(result.error ?? "Failed to revert hero photo.");
+        toast.error(result.error ?? "Failed to revert photo.");
         return;
       }
-      setHero(null);
+      setPhoto(null);
       setAltDraft("");
-      toast.success("Reverted to automatic hero photo.");
+      toast.success("Reverted to automatic photo.");
     });
   }
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="font-heading text-lg font-semibold text-foreground">Hero photo</h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Shown at the top of the homepage. Leave unset and it automatically
-        uses the first product photo in your menu.
-      </p>
+      <h3 className="font-heading text-lg font-semibold text-foreground">{title}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="relative aspect-4/3 w-full max-w-56 shrink-0 overflow-hidden rounded-lg bg-muted">
-          {hero?.image_url && (
+          {photo?.image_url && (
             <Image
-              src={hero.image_url}
+              src={photo.image_url}
               alt=""
               fill
               sizes="224px"
@@ -91,14 +102,14 @@ function HeroPhotoEditor({ initialHero }: { initialHero: HomepagePhoto | null })
 
         <div className="flex flex-1 flex-col gap-3">
           <Field>
-            <FieldLabel htmlFor="hero-alt">Alt text</FieldLabel>
+            <FieldLabel htmlFor={`${section}-alt`}>Alt text</FieldLabel>
             <Input
-              id="hero-alt"
+              id={`${section}-alt`}
               placeholder="Describe the photo"
               value={altDraft}
               onChange={(e) => setAltDraft(e.target.value)}
-              onBlur={() => hero && saveHero(hero.image_url, altDraft)}
-              disabled={!hero}
+              onBlur={() => photo && save(photo.image_url, altDraft)}
+              disabled={!photo}
             />
           </Field>
 
@@ -112,9 +123,9 @@ function HeroPhotoEditor({ initialHero }: { initialHero: HomepagePhoto | null })
             />
             <ExistingPhotoPicker
               photos={existingPhotos}
-              onSelect={(url) => saveHero(url, altDraft)}
+              onSelect={(url) => save(url, altDraft)}
             />
-            {hero && (
+            {photo && (
               <Button
                 type="button"
                 variant="ghost"
@@ -133,25 +144,35 @@ function HeroPhotoEditor({ initialHero }: { initialHero: HomepagePhoto | null })
   );
 }
 
-function GalleryPhotosEditor({ initialGallery }: { initialGallery: HomepagePhoto[] }) {
-  const [gallery, setGallery] = useState(initialGallery);
+function ListPhotosEditor({
+  section,
+  title,
+  description,
+  initialList,
+}: {
+  section: StoryListSection;
+  title: string;
+  description: string;
+  initialList: StoryPhoto[];
+}) {
+  const [list, setList] = useState(initialList);
   const [, startTransition] = useTransition();
   const existingPhotos = useExistingPhotos(true);
   const { uploading, upload } = usePhotoUpload();
 
   function addPhoto(imageUrl: string) {
-    const displayOrder = gallery.length;
+    const displayOrder = list.length;
     startTransition(async () => {
-      const result = await addGalleryPhotoAction(imageUrl, null, displayOrder);
+      const result = await addStoryListPhotoAction(section, imageUrl, null, displayOrder);
       if (!result.success || !result.data) {
         toast.error(result.error ?? "Failed to add photo.");
         return;
       }
-      setGallery((prev) => [
+      setList((prev) => [
         ...prev,
         {
           id: result.data!.id,
-          section: "gallery",
+          section,
           image_url: imageUrl,
           alt_text: null,
           display_order: displayOrder,
@@ -171,11 +192,11 @@ function GalleryPhotosEditor({ initialGallery }: { initialGallery: HomepagePhoto
   }
 
   function handleAltChange(id: string, altText: string) {
-    setGallery((prev) =>
+    setList((prev) =>
       prev.map((p) => (p.id === id ? { ...p, alt_text: altText || null } : p)),
     );
     startTransition(async () => {
-      const result = await updateGalleryPhotoAltAction(id, altText || null);
+      const result = await updateStoryListPhotoAltAction(id, altText || null);
       if (!result.success) {
         toast.error(result.error ?? "Failed to update photo.");
       }
@@ -183,12 +204,12 @@ function GalleryPhotosEditor({ initialGallery }: { initialGallery: HomepagePhoto
   }
 
   function handleRemove(id: string) {
-    const previous = gallery;
-    setGallery((prev) => prev.filter((p) => p.id !== id));
+    const previous = list;
+    setList((prev) => prev.filter((p) => p.id !== id));
     startTransition(async () => {
-      const result = await deleteGalleryPhotoAction(id);
+      const result = await deleteStoryListPhotoAction(id);
       if (!result.success) {
-        setGallery(previous);
+        setList(previous);
         toast.error(result.error ?? "Failed to remove photo.");
       }
     });
@@ -196,14 +217,14 @@ function GalleryPhotosEditor({ initialGallery }: { initialGallery: HomepagePhoto
 
   function handleMove(index: number, direction: -1 | 1) {
     const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= gallery.length) return;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
 
-    const reordered = [...gallery];
+    const reordered = [...list];
     [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
-    setGallery(reordered);
+    setList(reordered);
 
     startTransition(async () => {
-      const result = await reorderGalleryPhotosAction(reordered.map((p) => p.id));
+      const result = await reorderStoryListPhotosAction(reordered.map((p) => p.id));
       if (!result.success) {
         toast.error(result.error ?? "Failed to reorder photos.");
       }
@@ -212,20 +233,17 @@ function GalleryPhotosEditor({ initialGallery }: { initialGallery: HomepagePhoto
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="font-heading text-lg font-semibold text-foreground">Photo gallery</h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Shown further down the homepage. Leave empty and it automatically
-        fills in with your product photos.
-      </p>
+      <h3 className="font-heading text-lg font-semibold text-foreground">{title}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
 
       <div className="mt-4 flex flex-col gap-3">
-        {gallery.map((photo, index) => (
+        {list.map((photo, index) => (
           <PhotoListItemCard
             key={photo.id}
             imageUrl={photo.image_url}
             altText={photo.alt_text}
             index={index}
-            total={gallery.length}
+            total={list.length}
             onMove={handleMove}
             onAltChange={(altText) => handleAltChange(photo.id, altText)}
             onRemove={() => handleRemove(photo.id)}
@@ -252,17 +270,51 @@ function GalleryPhotosEditor({ initialGallery }: { initialGallery: HomepagePhoto
   );
 }
 
-export function HomepagePhotosManager({
+export function StoryPhotosManager({
   hero,
+  beat1,
+  beat2,
+  timeline,
   gallery,
 }: {
-  hero: HomepagePhoto | null;
-  gallery: HomepagePhoto[];
+  hero: StoryPhoto | null;
+  beat1: StoryPhoto | null;
+  beat2: StoryPhoto | null;
+  timeline: StoryPhoto[];
+  gallery: StoryPhoto[];
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <HeroPhotoEditor initialHero={hero} />
-      <GalleryPhotosEditor initialGallery={gallery} />
+      <SinglePhotoEditor
+        section="story_hero"
+        title="Hero photo"
+        description="The split hero at the top of Our Story. Leave unset and it automatically uses the homepage hero photo."
+        initialPhoto={hero}
+      />
+      <SinglePhotoEditor
+        section="story_beat_1"
+        title="First narrative photo"
+        description="Paired with the first part of the origin story. Leave unset and it automatically uses a product photo."
+        initialPhoto={beat1}
+      />
+      <SinglePhotoEditor
+        section="story_beat_2"
+        title="Second narrative photo"
+        description="Paired with the second part of the origin story. Leave unset and it automatically uses a product photo."
+        initialPhoto={beat2}
+      />
+      <ListPhotosEditor
+        section="story_timeline"
+        title="Day-in-the-life timeline"
+        description="Up to a few photos for the interactive baking-timeline steps (e.g. flour & water, first bake, hot out of the oven). Leave empty and it automatically fills in with product photos."
+        initialList={timeline}
+      />
+      <ListPhotosEditor
+        section="story_gallery"
+        title="Closing photo filmstrip"
+        description="Shown near the bottom of Our Story. Leave empty and it automatically fills in with product photos."
+        initialList={gallery}
+      />
     </div>
   );
 }

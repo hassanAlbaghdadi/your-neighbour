@@ -95,7 +95,10 @@ CREATE TABLE settings (
 -- per-variant image override.
 CREATE TABLE homepage_photos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  section TEXT NOT NULL CHECK (section IN ('hero', 'gallery')),
+  section TEXT NOT NULL CHECK (section IN (
+    'hero', 'gallery',
+    'story_hero', 'story_beat_1', 'story_beat_2', 'story_timeline', 'story_gallery'
+  )),
   image_url TEXT NOT NULL,
   alt_text TEXT,
   display_order INT NOT NULL DEFAULT 0,

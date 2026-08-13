@@ -237,7 +237,14 @@ export interface Database {
       homepage_photos: {
         Row: {
           id: string;
-          section: "hero" | "gallery";
+          section:
+            | "hero"
+            | "gallery"
+            | "story_hero"
+            | "story_beat_1"
+            | "story_beat_2"
+            | "story_timeline"
+            | "story_gallery";
           image_url: string;
           alt_text: string | null;
           display_order: number;
@@ -246,7 +253,14 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          section: "hero" | "gallery";
+          section:
+            | "hero"
+            | "gallery"
+            | "story_hero"
+            | "story_beat_1"
+            | "story_beat_2"
+            | "story_timeline"
+            | "story_gallery";
           image_url: string;
           alt_text?: string | null;
           display_order?: number;

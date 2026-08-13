@@ -17,7 +17,17 @@ interface GalleryPhoto {
 const SIZES =
   "(min-width: 1536px) 384px, (min-width: 1280px) 320px, (min-width: 1024px) 288px, (min-width: 640px) 38vw, 72vw";
 
-export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
+interface PhotoGalleryProps {
+  photos: GalleryPhoto[];
+  eyebrow?: string;
+  heading?: string;
+}
+
+export function PhotoGallery({
+  photos,
+  eyebrow = "From the kitchen",
+  heading = "A closer look",
+}: PhotoGalleryProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -55,10 +65,10 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
     <section className="border-b border-border bg-ivory-50">
       <div className="mx-auto w-full max-w-6xl px-4 pt-14 sm:px-6">
         <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
-          From the kitchen
+          {eyebrow}
         </p>
         <h2 className="mt-2 font-heading text-2xl font-semibold text-foreground sm:text-3xl">
-          A closer look
+          {heading}
         </h2>
       </div>
 

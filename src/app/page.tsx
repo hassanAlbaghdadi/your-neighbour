@@ -1,8 +1,8 @@
 import {
   getCategories,
   getProducts,
-  type Product,
 } from "@/lib/services/products/get-products";
+import { resolveProductPhotos } from "@/lib/services/products/resolve-product-photos";
 import { getSettings } from "@/lib/services/settings/get-settings";
 import { getHomepagePhotos } from "@/lib/services/homepage/get-homepage-photos";
 import { MenuGrid } from "@/components/menu/menu-grid";
@@ -10,11 +10,6 @@ import { HeroSection } from "@/components/home/hero-section";
 import { FounderNote } from "@/components/home/founder-note";
 import { StoryFacts } from "@/components/home/story-facts";
 import { PhotoGallery } from "@/components/home/photo-gallery";
-
-function resolveImage(product: Product): string | null {
-  const variantImage = product.variants.find((v) => v.image_url)?.image_url;
-  return variantImage ?? product.image_url ?? null;
-}
 
 export default async function HomePage() {
   const [categories, products, settings, homepagePhotos] = await Promise.all([
@@ -24,16 +19,7 @@ export default async function HomePage() {
     getHomepagePhotos(),
   ]);
 
-  const autoPhotos = products
-    .map((product) => {
-      const src = resolveImage(product);
-      return src ? { src, alt: product.name } : null;
-    })
-    .filter((photo): photo is { src: string; alt: string } => photo !== null);
-  const uniqueAutoPhotos = Array.from(
-    new Map(autoPhotos.map((photo) => [photo.src, photo])).values(),
-  );
-  const [autoHeroPhoto, ...autoGalleryPhotos] = uniqueAutoPhotos;
+  const [autoHeroPhoto, ...autoGalleryPhotos] = resolveProductPhotos(products);
 
   const heroImageUrl = homepagePhotos.hero?.image_url ?? autoHeroPhoto?.src ?? null;
   const heroImageAlt =

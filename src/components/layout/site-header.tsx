@@ -39,20 +39,31 @@ export function SiteHeader() {
     <>
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
         <div className="mx-auto grid h-16 max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-3 px-4 sm:px-6">
-          <Link
-            href="/"
-            className="font-heading text-xl font-semibold tracking-tight text-foreground"
-          >
-            Your Neighbour
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link
+              href="/"
+              className="font-heading text-xl font-semibold tracking-tight text-foreground"
+            >
+              Your Neighbour
+            </Link>
+            <Link
+              href="/our-story"
+              className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
+            >
+              Our story
+            </Link>
+          </div>
 
           {/* Reserves its grid cell even while hidden, so it fades in without
               shifting the wordmark or cart icon. Same mechanism at every
               breakpoint — mobile is the one most likely to scroll past the
               hero (see stat-strip cadence finding), so this can't be
-              desktop-only. */}
+              desktop-only. Points at "/#menu" rather than "#menu" so it
+              still resolves correctly from pages with no #menu of their
+              own (e.g. /our-story) — scrollToAnchor no-ops when the id
+              isn't on the current page and falls through to this href. */}
           <Link
-            href="#menu"
+            href="/#menu"
             onClick={(e) => {
               scrollToAnchor(e, "menu");
               track("menu_reentry_click");
