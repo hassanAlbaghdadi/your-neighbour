@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { InstagramIcon } from "@/components/icons/instagram-icon";
 import { scrollToAnchor } from "@/lib/utils";
+import { track } from "@/lib/analytics";
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/social";
 
 interface SiteFooterProps {
   businessName: string;
@@ -18,10 +22,20 @@ export function SiteFooter({
 
   return (
     <footer className="bg-espresso-900 text-cream-50">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-12 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 sm:flex-row sm:items-start sm:justify-between sm:px-6">
         <div>
-          <p className="font-heading text-lg font-semibold">{businessName}</p>
-          <p className="mt-2 max-w-xs text-sm text-cream-50/70">
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image
+              src="/brand/mark-white.png"
+              alt=""
+              width={28}
+              height={28}
+            />
+            <span className="font-heading text-lg font-semibold">
+              {businessName}
+            </span>
+          </Link>
+          <p className="mt-3 max-w-xs text-sm text-cream-50/70">
             Small-batch baked goods, made to order for local pickup.
           </p>
         </div>
@@ -60,6 +74,22 @@ export function SiteFooter({
             </a>
           </div>
         )}
+
+        <div>
+          <p className="text-xs font-semibold tracking-wider text-cream-50/50 uppercase">
+            Follow
+          </p>
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => track("instagram_click", { location: "footer" })}
+            className="mt-3 flex items-center gap-1.5 text-sm text-cream-50/80 transition-colors hover:text-cream-50"
+          >
+            <InstagramIcon className="size-4" />
+            {INSTAGRAM_HANDLE}
+          </a>
+        </div>
       </div>
 
       <div className="border-t border-cream-50/10 px-4 py-4 sm:px-6">
