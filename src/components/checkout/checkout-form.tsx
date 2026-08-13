@@ -45,6 +45,17 @@ const Calendar = dynamic(
   },
 );
 
+// Screen order, which is what "the first thing to fix" means to a customer
+// — not the schema's key order.
+const FIELD_FOCUS_ORDER = [
+  "pickupDate",
+  "pickupTime",
+  "customerName",
+  "customerEmail",
+  "customerPhone",
+  "notes",
+] as const satisfies readonly (keyof CheckoutFormValues)[];
+
 interface CheckoutFormProps {
   settings: StoreSettings;
   orderCounts: Record<string, number>;
@@ -73,6 +84,12 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
   // letting the server-side idempotency check actually catch duplicates.
   const [orderId] = useState(() => crypto.randomUUID());
 
+  // Used by focusFirstError below. The date trigger needs no equivalent ref:
+  // it renders through PopoverTrigger's `asChild`, which claims the child's
+  // ref for Radix's own use, so one passed to <Button> never reaches the DOM
+  // node — it's looked up by the id it already carries for its label.
+  const pickupTimeGroupRef = useRef<HTMLDivElement>(null);
+
   const {
     register,
     handleSubmit,
@@ -81,6 +98,13 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     formState: { errors },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
+    // Focus is handled in focusFirstError below instead. react-hook-form
+    // can only focus fields it registered, so on a form whose first two
+    // fields are a popover trigger and a button group it reliably lands on
+    // the wrong one — and it runs its focus after the invalid callback, so
+    // it wins any attempt to correct it afterwards. Owning this outright is
+    // simpler than racing it.
+    shouldFocusError: false,
     defaultValues: {
       customerName: "",
       customerEmail: "",
@@ -155,6 +179,30 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     router.push(`/confirmation/${result.data.order.id}`);
   }
 
+  /**
+   * Moves focus to the first field the customer actually needs to fix, in
+   * the order they appear on screen. Without this a submit with no pickup
+   * date picked left focus where it was and only painted red text — easy to
+   * miss entirely on a phone, where the message can be off-screen.
+   */
+  function focusFirstError(fieldErrors: typeof errors) {
+    const firstInvalid = FIELD_FOCUS_ORDER.find((name) => fieldErrors[name]);
+    if (!firstInvalid) return;
+
+    // The pickup fields aren't inputs — one is a popover trigger, the other
+    // a group of buttons — so they're reached by id and by ref
+    // respectively. Every registered input's id matches its field name.
+    const target =
+      firstInvalid === "pickupTime"
+        ? (pickupTimeGroupRef.current?.querySelector("button") ?? null)
+        : document.getElementById(
+            firstInvalid === "pickupDate" ? "pickup-date" : firstInvalid,
+          );
+
+    target?.focus();
+    target?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
   // A named handler, not `onSubmit={handleSubmit(onSubmit)}` inline in JSX:
   // calling handleSubmit(onSubmit) directly in the render body hands a
   // ref-reading closure to a function invoked during render, which trips
@@ -174,7 +222,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      await handleSubmit(onSubmit)(event);
+      await handleSubmit(onSubmit, focusFirstError)(event);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -229,8 +277,17 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
 
         {selectedDate && (
           <Field>
-            <FieldLabel>Pickup time</FieldLabel>
-            <div className="flex flex-wrap gap-2">
+            <FieldLabel id="pickup-time-label">Pickup time</FieldLabel>
+            {/* Labelled group rather than a bare div: this FieldLabel has no
+                htmlFor to bind to (the slots are buttons, not one input), so
+                without aria-labelledby the label announces as loose text and
+                the buttons as an unlabelled pile. */}
+            <div
+              ref={pickupTimeGroupRef}
+              role="group"
+              aria-labelledby="pickup-time-label"
+              className="flex flex-wrap gap-2"
+            >
               {availableSlots.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No pickup times available on this date.
@@ -241,6 +298,10 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
                     key={slot}
                     type="button"
                     size="sm"
+                    // Selection was conveyed only by `variant` — i.e. purely
+                    // visually — on a required field. Mirrors the same
+                    // pattern in product-card.tsx's VariantSegments.
+                    aria-pressed={pickupTime === slot}
                     variant={pickupTime === slot ? "default" : "outline"}
                     onClick={() => setValue("pickupTime", slot)}
                   >
@@ -289,6 +350,25 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
         <Button type="submit" size="lg" disabled={submitting}>
           {submitting ? "Placing order…" : "Place Order"}
         </Button>
+
+        <p className="text-sm text-muted-foreground">
+          You&apos;ll pay securely via Stripe on the next screen. Payment
+          reserves your pickup slot — need to change or cancel afterwards?{" "}
+          {settings.contactEmail ? (
+            <>
+              Email us at{" "}
+              <a
+                href={`mailto:${settings.contactEmail}`}
+                className="text-primary underline underline-offset-4"
+              >
+                {settings.contactEmail}
+              </a>{" "}
+              and we&apos;ll sort it out.
+            </>
+          ) : (
+            <>Just get in touch and we&apos;ll sort it out.</>
+          )}
+        </p>
       </FieldGroup>
 
       <aside className="h-fit rounded-xl border border-border bg-card p-5">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ImageOff, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -48,7 +48,13 @@ function VariantSegments({
     }
   }
 
-  useLayoutEffect(reposition, [selectedId, variants]);
+  // useEffect, not useLayoutEffect: this is a client component, but client
+  // components still server-render, and useLayoutEffect does nothing on the
+  // server — React logs a warning for every card on every page render. The
+  // indicator starts hidden (`indicator` is null until the first pass) and
+  // only animates on later selections, so there's no pre-paint flash to
+  // avoid here that would justify blocking paint.
+  useEffect(reposition, [selectedId, variants]);
 
   useEffect(() => {
     window.addEventListener("resize", reposition);

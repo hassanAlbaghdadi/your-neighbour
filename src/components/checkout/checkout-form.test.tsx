@@ -164,3 +164,91 @@ describe("CheckoutForm double-submit protection", () => {
     expect(screen.getAllByText("$8.00")).toHaveLength(2);
   });
 });
+
+async function pickDate() {
+  fireEvent.click(screen.getByRole("button", { name: /pickup date/i }));
+
+  const firstEnabledDay = await waitFor(() => {
+    const day = screen
+      .getAllByRole("button")
+      .find(
+        (button) =>
+          button.hasAttribute("data-day") && !button.hasAttribute("disabled"),
+      );
+    if (!day) throw new Error("Calendar has not finished loading yet");
+    return day;
+  });
+  fireEvent.click(firstEnabledDay);
+
+  // Radix hands focus back to the trigger when the popover closes, and does
+  // it asynchronously. Waiting for that to land keeps these tests on the
+  // real sequence — the popover has finished closing long before a customer
+  // reaches for Place Order — rather than racing it.
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: /pickup date/i }),
+    ),
+  );
+}
+
+describe("CheckoutForm validation focus", () => {
+  beforeEach(() => {
+    createOrderActionMock.mockReset();
+  });
+
+  async function submitAndSettle() {
+    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    await waitFor(() =>
+      expect(screen.getAllByRole("alert").length).toBeGreaterThan(0),
+    );
+  }
+
+  it("focuses the pickup date when nothing has been filled in", async () => {
+    // The pickup fields aren't registered inputs, so react-hook-form's own
+    // focus handling can't reach them — it would land on "Full name" and
+    // leave the customer hunting for the real complaint, which on a phone
+    // may be scrolled off screen entirely.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+
+    await submitAndSettle();
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: /pickup date/i }),
+    );
+    expect(createOrderActionMock).not.toHaveBeenCalled();
+  });
+
+  it("focuses the first pickup time once a date is chosen", async () => {
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await pickDate();
+
+    await submitAndSettle();
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "23:59" }),
+    );
+  });
+
+  it("falls through to the first invalid text field once pickup is set", async () => {
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await pickDate();
+    fireEvent.click(await screen.findByRole("button", { name: "23:59" }));
+
+    await submitAndSettle();
+
+    expect(document.activeElement).toBe(screen.getByLabelText(/full name/i));
+  });
+
+  it("skips fields that are already valid", async () => {
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await pickDate();
+    fireEvent.click(await screen.findByRole("button", { name: "23:59" }));
+    fireEvent.change(screen.getByLabelText(/full name/i), {
+      target: { value: "Jane Doe" },
+    });
+
+    await submitAndSettle();
+
+    expect(document.activeElement).toBe(screen.getByLabelText(/^email$/i));
+  });
+});
