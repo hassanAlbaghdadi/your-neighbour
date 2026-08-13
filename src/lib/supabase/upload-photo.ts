@@ -16,7 +16,7 @@ export async function uploadPhoto(file: File): Promise<UploadPhotoResult> {
     return { success: false, error: "Image is too large — max 25MB." };
   }
 
-  const compressed = await compressPhoto(file);
+  const compressed = await compressPhoto(file, MAX_UPLOAD_BYTES);
   if (compressed.size > MAX_UPLOAD_BYTES) {
     return { success: false, error: "Image is too large — max 8MB after compression." };
   }

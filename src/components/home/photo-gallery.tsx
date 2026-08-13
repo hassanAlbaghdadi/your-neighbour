@@ -11,55 +11,11 @@ interface GalleryPhoto {
   alt: string;
 }
 
-const MOBILE_SIZES = "(min-width: 640px) 38vw, 72vw";
-const HERO_SIZES = `(min-width: 1024px) 45vw, ${MOBILE_SIZES}`;
-const SINGLE_SIZES = `(min-width: 1024px) 22vw, ${MOBILE_SIZES}`;
-const FULL_SIZES = `(min-width: 1024px) 90vw, ${MOBILE_SIZES}`;
-
-// One 2x2 hero + four 1x1 cells fill all 8 cells of a 4-col x 2-row block
-// exactly, so the pattern seams cleanly into the next block for any photo
-// count — cycled by index like the mobile caption number below, not tied to
-// a photo's actual content, since the admin can upload photos in any order.
-const BENTO_CELLS = [
-  { span: "lg:col-span-2 lg:row-span-2", sizes: HERO_SIZES },
-  { span: "lg:col-span-1 lg:row-span-1", sizes: SINGLE_SIZES },
-  { span: "lg:col-span-1 lg:row-span-1", sizes: SINGLE_SIZES },
-  { span: "lg:col-span-1 lg:row-span-1", sizes: SINGLE_SIZES },
-  { span: "lg:col-span-1 lg:row-span-1", sizes: SINGLE_SIZES },
-];
-
-// BENTO_CELLS only tiles a 4x2 block cleanly in groups of 5 — a photo count
-// that isn't a multiple of 5 leaves a trailing group of 1-4 photos that,
-// cycled through the same pattern, stops partway through a block and leaves
-// empty grid cells (e.g. 9 photos = one full block + a hero-plus-3 block,
-// short one cell). Each of these is hand-fit to tile its own 4x2 area with
-// zero leftover, so the grid always ends flush regardless of count.
-const REMAINDER_CELLS: Record<number, { span: string; sizes: string }[]> = {
-  1: [{ span: "lg:col-span-4 lg:row-span-2", sizes: FULL_SIZES }],
-  2: [
-    { span: "lg:col-span-2 lg:row-span-2", sizes: HERO_SIZES },
-    { span: "lg:col-span-2 lg:row-span-2", sizes: HERO_SIZES },
-  ],
-  3: [
-    { span: "lg:col-span-2 lg:row-span-2", sizes: HERO_SIZES },
-    { span: "lg:col-span-1 lg:row-span-2", sizes: SINGLE_SIZES },
-    { span: "lg:col-span-1 lg:row-span-2", sizes: SINGLE_SIZES },
-  ],
-  4: [
-    { span: "lg:col-span-2 lg:row-span-1", sizes: HERO_SIZES },
-    { span: "lg:col-span-2 lg:row-span-1", sizes: HERO_SIZES },
-    { span: "lg:col-span-2 lg:row-span-1", sizes: HERO_SIZES },
-    { span: "lg:col-span-2 lg:row-span-1", sizes: HERO_SIZES },
-  ],
-};
-
-function getBentoCell(index: number, total: number) {
-  const completeBlockCount = Math.floor(total / BENTO_CELLS.length) * BENTO_CELLS.length;
-  if (index < completeBlockCount) {
-    return BENTO_CELLS[index % BENTO_CELLS.length];
-  }
-  return REMAINDER_CELLS[total - completeBlockCount][index - completeBlockCount];
-}
+// Same uniform 4:5 card at every breakpoint — only the rendered width
+// changes (lg:w-72/xl:w-80/2xl:w-96 on the figure below), so this just
+// mirrors those widths for the browser's image-request sizing.
+const SIZES =
+  "(min-width: 1536px) 384px, (min-width: 1280px) 320px, (min-width: 1024px) 288px, (min-width: 640px) 38vw, 72vw";
 
 export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -71,6 +27,26 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
     if (!track || photos.length === 0) return;
     const cardWidth = track.scrollWidth / photos.length;
     setActiveIndex(Math.round(track.scrollLeft / cardWidth));
+  }, [photos.length]);
+
+  // Arrows (lg+) step the same scroll-snap track the browser already
+  // drives from touch/trackpad input — almost a full screen at a time
+  // (not one card, which turns a 7-photo gallery into 6 clicks), but one
+  // card short of the full width so a card is always left peeking at the
+  // edge as the cue that there's more.
+  const scrollByCards = useCallback((direction: 1 | -1) => {
+    const track = trackRef.current;
+    if (!track || photos.length === 0) return;
+    const cardWidth = track.scrollWidth / photos.length;
+    const visibleCount = Math.max(1, Math.round(track.clientWidth / cardWidth));
+    const step = cardWidth * Math.max(1, visibleCount - 1);
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    track.scrollBy({
+      left: direction * step,
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
   }, [photos.length]);
 
   if (photos.length === 0) return null;
@@ -88,71 +64,64 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
 
       {/* Full-bleed, unlike the rest of the page's max-w-6xl column — matches
           the hero's edge-to-edge treatment instead of leaving the photos
-          boxed into the same narrow column as the menu text. Below lg: the
-          same native scroll-snap filmstrip as before — no JS-driven motion,
-          nothing that can jank, touch-pan-x keeps a diagonal swipe from
-          fighting the page's own vertical scroll. From lg: the track becomes
-          a real CSS grid (overflow-visible, snap disabled) and each figure's
-          lg: col/row-span turns it into a bento cell instead of a carousel
-          card; auto-rows grows at xl/2xl so cells don't go squat as the
-          now-unbounded grid gets wider. */}
+          boxed into the same narrow column as the menu text. One native
+          scroll-snap filmstrip at every breakpoint — no JS-driven position,
+          nothing that can jank — touch-pan-x keeps a diagonal swipe from
+          fighting the page's own vertical scroll. Every card is the same
+          4:5 shape and weight; only its rendered width grows at lg/xl/2xl,
+          which is also what widens the "peek" of the next card at the edge.
+          From lg, the scrollbar is hidden in favor of the arrow buttons
+          below, which just call scrollBy on this same track — so mouse
+          wheel/trackpad scrolling and the arrows drive the identical
+          mechanism, they're never out of sync. */}
       <div
         ref={trackRef}
         onScroll={handleScroll}
-        className="mt-8 flex touch-pan-x items-stretch gap-4 overflow-x-auto scroll-px-4 px-4 pb-2 snap-x snap-mandatory [scrollbar-width:none] sm:gap-5 sm:scroll-px-6 sm:px-6 sm:[scrollbar-width:thin] [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-1.5 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-thumb]:bg-terracotta-600/30 sm:[&::-webkit-scrollbar-track]:bg-transparent lg:grid lg:auto-rows-[11rem] lg:grid-cols-4 lg:gap-4 lg:overflow-visible lg:px-8 lg:pb-0 lg:snap-none lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden xl:auto-rows-[13rem] xl:px-12 2xl:auto-rows-[15rem] 2xl:px-16"
+        className="mt-8 flex touch-pan-x items-stretch gap-4 overflow-x-auto scroll-px-4 px-4 pb-2 snap-x snap-mandatory [scrollbar-width:none] sm:gap-5 sm:scroll-px-6 sm:px-6 sm:[scrollbar-width:thin] [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-1.5 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-thumb]:bg-terracotta-600/30 sm:[&::-webkit-scrollbar-track]:bg-transparent lg:gap-6 lg:scroll-px-8 lg:px-8 lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden xl:scroll-px-12 xl:px-12 2xl:scroll-px-16 2xl:px-16"
       >
-          {photos.map((photo, index) => {
-            const cell = getBentoCell(index, photos.length);
-            return (
-              <figure
-                // Index, not src — the admin-curated gallery list doesn't
-                // guarantee distinct image_urls (the same upload can be
-                // reused across slots), unlike the deduped auto-fallback.
-                key={index}
-                className={cn(
-                  "w-[72%] shrink-0 snap-start sm:w-[38%] lg:w-auto lg:snap-align-none",
-                  cell.span,
-                )}
+          {photos.map((photo, index) => (
+            <figure
+              // Index, not src — the admin-curated gallery list doesn't
+              // guarantee distinct image_urls (the same upload can be
+              // reused across slots), unlike the deduped auto-fallback.
+              key={index}
+              className="w-[72%] shrink-0 snap-start sm:w-[38%] lg:w-72 xl:w-80 2xl:w-96"
+            >
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(index)}
+                aria-label={
+                  photo.alt
+                    ? `View ${photo.alt} full size`
+                    : `View photo ${index + 1} full size`
+                }
+                className="group relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-muted motion-safe:transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-safe:lg:hover:-translate-y-1 motion-safe:lg:hover:shadow-[0_16px_32px_-12px_rgba(42,33,29,0.18),0_4px_10px_-4px_rgba(42,33,29,0.1)]"
               >
-                <button
-                  type="button"
-                  onClick={() => setLightboxIndex(index)}
-                  aria-label={
-                    photo.alt
-                      ? `View ${photo.alt} full size`
-                      : `View photo ${index + 1} full size`
-                  }
-                  className="group relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-muted motion-safe:transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 lg:aspect-auto lg:h-full motion-safe:lg:hover:-translate-y-1 motion-safe:lg:hover:shadow-[0_16px_32px_-12px_rgba(42,33,29,0.18),0_4px_10px_-4px_rgba(42,33,29,0.1)]"
-                >
-                  <Image
-                    src={photo.src}
-                    alt={photo.alt}
-                    fill
-                    sizes={cell.sizes}
-                    className="object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:lg:group-hover:scale-105"
-                  />
-                  {/* Caption-on-hover — desktop only. Mobile keeps the
-                      permanent figcaption below, since touch has no hover
-                      to reveal this with. */}
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-2/3 bg-gradient-to-t from-espresso-900/75 via-espresso-900/15 to-transparent opacity-0 motion-safe:transition-opacity motion-safe:duration-300 motion-safe:lg:group-hover:opacity-100 lg:block"
-                  />
-                  {photo.alt && (
-                    <span className="pointer-events-none absolute bottom-3 left-3 hidden max-w-[calc(100%-1.5rem)] truncate text-xs font-medium text-cream-50 opacity-0 motion-safe:transition-opacity motion-safe:duration-300 motion-safe:lg:group-hover:opacity-100 lg:block">
-                      {photo.alt}
-                    </span>
-                  )}
-                </button>
-                <figcaption className="mt-2 flex items-baseline gap-1.5 text-xs text-muted-foreground lg:hidden">
-                  <span className="font-semibold tracking-wider text-terracotta-600">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  {photo.alt && <span>/ {photo.alt}</span>}
-                </figcaption>
-              </figure>
-            );
-          })}
+                <Image
+                  src={photo.src}
+                  alt={photo.alt}
+                  fill
+                  sizes={SIZES}
+                  className="object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:lg:group-hover:scale-105"
+                />
+                {/* Hover darken (lg only, touch has no hover) — just a
+                    "this is clickable" cue now. The caption itself is the
+                    figcaption below, shown at every breakpoint, so mobile
+                    and desktop read as the same design instead of desktop
+                    going caption-less until a mouse happens by. */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-1/3 bg-gradient-to-t from-espresso-900/40 to-transparent opacity-0 motion-safe:transition-opacity motion-safe:duration-300 motion-safe:lg:group-hover:opacity-100 lg:block"
+                />
+              </button>
+              <figcaption className="mt-2 flex items-baseline gap-1.5 text-xs text-muted-foreground">
+                <span className="font-semibold tracking-wider text-terracotta-600">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                {photo.alt && <span>/ {photo.alt}</span>}
+              </figcaption>
+            </figure>
+          ))}
         </div>
 
       <div className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6">
@@ -174,6 +143,28 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
             <p className="sr-only" aria-live="polite">
               Photo {activeIndex + 1} of {photos.length}
             </p>
+          </div>
+        )}
+        {photos.length > 1 && (
+          <div className="mt-6 hidden justify-center gap-2 lg:flex">
+            <button
+              type="button"
+              onClick={() => scrollByCards(-1)}
+              disabled={activeIndex <= 0}
+              className="flex size-10 items-center justify-center rounded-full bg-cream-50/90 text-espresso-900 shadow-lg transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <ChevronLeft className="size-5" />
+              <span className="sr-only">Previous photos</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollByCards(1)}
+              disabled={activeIndex >= photos.length - 1}
+              className="flex size-10 items-center justify-center rounded-full bg-cream-50/90 text-espresso-900 shadow-lg transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <ChevronRight className="size-5" />
+              <span className="sr-only">Next photos</span>
+            </button>
           </div>
         )}
       </div>
