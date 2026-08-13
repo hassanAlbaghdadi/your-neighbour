@@ -142,6 +142,7 @@ export interface Database {
           status: OrderStatus;
           payment_status: PaymentStatus;
           stripe_checkout_session_id: string | null;
+          notified_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -158,6 +159,7 @@ export interface Database {
           status?: OrderStatus;
           payment_status?: PaymentStatus;
           stripe_checkout_session_id?: string | null;
+          notified_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -273,6 +275,18 @@ export interface Database {
           p_variants_to_insert: Json;
           p_variant_ids_to_delete: string[];
         };
+        Returns: undefined;
+      };
+      check_rate_limit: {
+        Args: {
+          p_key: string;
+          p_limit: number;
+          p_window_seconds: number;
+        };
+        Returns: boolean;
+      };
+      prune_rate_limits: {
+        Args: Record<string, never>;
         Returns: undefined;
       };
     };

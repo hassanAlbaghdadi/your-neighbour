@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { getStripeClient } from "@/lib/stripe/client";
 import { markOrderPaid } from "@/lib/services/orders/mark-order-paid";
 import { cancelExpiredOrder } from "@/lib/services/orders/cancel-expired-order";
+import { notifyPaymentFailed } from "@/lib/services/orders/notify-payment-failed";
 
 function orderIdFromSession(session: Stripe.Checkout.Session): string | null {
   return session.metadata?.order_id ?? session.client_reference_id ?? null;
@@ -43,10 +44,27 @@ export async function POST(request: Request) {
         if (orderId) await markOrderPaid(orderId);
         break;
       }
-      case "checkout.session.async_payment_failed":
       case "checkout.session.expired": {
-        const orderId = orderIdFromSession(event.data.object);
-        if (orderId) await cancelExpiredOrder(orderId);
+        // Abandoned checkout: free the slot, but stay quiet. The customer
+        // walked away without paying and knows they didn't order.
+        const session = event.data.object;
+        const orderId = orderIdFromSession(session);
+        // The session id is passed along so the cancel can confirm this is
+        // the session the order is actually waiting on — see
+        // cancel-expired-order.ts.
+        if (orderId) await cancelExpiredOrder(orderId, session.id);
+        break;
+      }
+      case "checkout.session.async_payment_failed": {
+        // A delayed payment method reporting back — often days later — that
+        // it failed. The customer finished checkout and believes the order
+        // is placed, so unlike an expiry this one owes them an email.
+        const session = event.data.object;
+        const orderId = orderIdFromSession(session);
+        if (orderId) {
+          const cancelled = await cancelExpiredOrder(orderId, session.id);
+          if (cancelled) await notifyPaymentFailed(orderId);
+        }
         break;
       }
       default:

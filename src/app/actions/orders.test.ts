@@ -4,6 +4,7 @@ const processNewOrderMock = vi.fn();
 const createCheckoutSessionMock = vi.fn();
 const releaseUnstartedReservationMock = vi.fn();
 const getUserMock = vi.fn();
+const checkRateLimitsMock = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -26,6 +27,10 @@ vi.mock("@/lib/services/orders/release-unpaid-reservation", () => ({
 vi.mock("@/lib/services/orders/update-order-status", () => ({
   updateOrderStatus: vi.fn(async () => {}),
 }));
+vi.mock("@/lib/services/rate-limit/check-rate-limit", () => ({
+  checkRateLimits: (...args: unknown[]) => checkRateLimitsMock(...args),
+  getClientIp: async () => "203.0.113.7",
+}));
 
 const { createOrderAction } = await import("./orders");
 
@@ -47,6 +52,39 @@ describe("createOrderAction", () => {
     processNewOrderMock.mockReset();
     createCheckoutSessionMock.mockReset();
     releaseUnstartedReservationMock.mockReset();
+    checkRateLimitsMock.mockReset();
+    checkRateLimitsMock.mockResolvedValue(true);
+  });
+
+  it("refuses the order and never reserves a slot when rate limited", async () => {
+    // Every created order holds a pickup-capacity slot until its Stripe
+    // session expires, so the limiter has to bite before processNewOrder —
+    // rejecting after the reservation would defeat the point.
+    checkRateLimitsMock.mockResolvedValue(false);
+
+    const result = await createOrderAction(validPayload);
+
+    expect(result.success).toBe(false);
+    expect(processNewOrderMock).not.toHaveBeenCalled();
+  });
+
+  it("limits by both client IP and customer email", async () => {
+    processNewOrderMock.mockResolvedValue({
+      id: validPayload.id,
+      total: 8,
+      paymentStatus: "unpaid",
+    });
+    createCheckoutSessionMock.mockResolvedValue("https://checkout.stripe.com/s");
+
+    await createOrderAction(validPayload);
+
+    expect(checkRateLimitsMock).toHaveBeenCalledWith([
+      expect.objectContaining({ scope: "order:ip", identifier: "203.0.113.7" }),
+      expect.objectContaining({
+        scope: "order:email",
+        identifier: "jane@example.com",
+      }),
+    ]);
   });
 
   it("creates a checkout session and returns its url for an unpaid order", async () => {

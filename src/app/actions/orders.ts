@@ -8,6 +8,10 @@ import { processNewOrder, OrderError } from "@/lib/services/orders/create-order"
 import { createCheckoutSessionForOrder } from "@/lib/services/orders/create-checkout-session";
 import { releaseUnstartedReservation } from "@/lib/services/orders/release-unpaid-reservation";
 import { updateOrderStatus } from "@/lib/services/orders/update-order-status";
+import {
+  checkRateLimits,
+  getClientIp,
+} from "@/lib/services/rate-limit/check-rate-limit";
 import { ORDER_STATUSES } from "@/types/database";
 import type { OrderResult } from "@/lib/services/orders/create-order";
 import type { OrderStatus } from "@/types/database";
@@ -20,6 +24,14 @@ export interface CreateOrderResult {
   checkoutUrl: string | null;
 }
 
+// Sized against max_orders_per_day (15 by default), not against what a
+// polite client would send: every order created here holds a pickup slot
+// until its Stripe session expires, so the limit has to be low enough that
+// a single source can't clear a day's capacity. A real customer places
+// one order; these leave room for a handful of failed retries on top.
+const ORDERS_PER_IP_PER_HOUR = 5;
+const ORDERS_PER_EMAIL_PER_HOUR = 3;
+
 export async function createOrderAction(
   payload: unknown,
 ): Promise<ActionResult<CreateOrderResult>> {
@@ -28,6 +40,31 @@ export async function createOrderAction(
     return {
       success: false,
       error: parsed.error.issues[0]?.message ?? "Invalid order details.",
+    };
+  }
+
+  // Checked on both axes because either alone is easy to slip: one IP can
+  // cycle through throwaway emails, and one email can be submitted from a
+  // pool of addresses.
+  const withinLimits = await checkRateLimits([
+    {
+      scope: "order:ip",
+      identifier: await getClientIp(),
+      limit: ORDERS_PER_IP_PER_HOUR,
+      windowSeconds: 3600,
+    },
+    {
+      scope: "order:email",
+      identifier: parsed.data.customerEmail.toLowerCase(),
+      limit: ORDERS_PER_EMAIL_PER_HOUR,
+      windowSeconds: 3600,
+    },
+  ]);
+  if (!withinLimits) {
+    return {
+      success: false,
+      error:
+        "That's a lot of orders in a short time. Please wait a little while before placing another, or get in touch and we'll sort it out.",
     };
   }
 

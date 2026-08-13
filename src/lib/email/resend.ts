@@ -15,9 +15,14 @@ function formatItemsList(items: OrderResult["items"]): string {
 }
 
 /**
- * Fires both the customer receipt and the owner alert. Called
- * non-blocking (fire-and-forget with a .catch) from create-order.ts —
- * a failure here must never affect the checkout outcome.
+ * Fires both the customer receipt and the owner alert.
+ *
+ * Awaited from markOrderPaid() on the Stripe webhook path, under the
+ * `notified_at` lease that makes it exactly-once across redeliveries.
+ * Rejecting here is meaningful, not incidental: it releases that lease and
+ * returns a 500 so Stripe redelivers the event and the send is retried.
+ * Swallowing the error would strand a paid order with no notification —
+ * which is exactly the bug 007_order_notification_lease.sql fixed.
  */
 export async function sendOrderNotifications(
   order: OrderResult,
@@ -64,4 +69,46 @@ ${itemsList}
 Total: ${formatPrice(order.total)}${order.notes ? `\n\nCustomer notes: ${order.notes}` : ""}`,
     }),
   ]);
+}
+
+/**
+ * Sent when a delayed payment method (bank debit and friends) reports back
+ * days later that it failed. The customer completed checkout and reasonably
+ * believes the order is placed — without this they'd simply never hear
+ * anything again, and would turn up on pickup day to nothing.
+ *
+ * Customer-only on purpose: a payment that never landed isn't an order, and
+ * the owner alert is meant to be a bake list, not a feed of non-events.
+ */
+// Parameter order matches sendOrderNotifications above deliberately: both
+// take two bare strings, so opposite orders would compile fine and simply
+// send the wrong thing.
+export async function sendPaymentFailedNotification(
+  order: OrderResult,
+  contactEmail: string,
+  businessName: string,
+): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const firstName = order.customerName.split(" ")[0];
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: order.customerEmail,
+    subject: `Your ${businessName} order couldn't be completed`,
+    text: `Hi ${firstName},
+
+Unfortunately your payment didn't go through, so we've had to release your
+pickup slot for ${order.pickupDate} at ${order.pickupTime}.
+
+You have not been charged. If you'd still like these items, you're very
+welcome to place the order again:
+
+${formatItemsList(order.items)}
+
+Total: ${formatPrice(order.total)}
+
+If you think this is a mistake, just reply to this email${contactEmail ? ` or reach us at ${contactEmail}` : ""} and we'll help sort it out.
+
+${businessName}`,
+  });
 }

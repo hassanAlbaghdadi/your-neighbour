@@ -7,10 +7,22 @@ import type { OrderResult } from "@/lib/services/orders/create-order";
 // How long a pending order can hold its pickup-capacity slot before the
 // Stripe session expires and the webhook frees it again (see
 // cancel-expired-order.ts). Kept short — same-week pickup orders don't
-// need a 24h-default hold on a slot someone else might want.
-const SESSION_EXPIRY_SECONDS = 60 * 60;
+// need a 24h-default hold on a slot someone else might want — and 30
+// minutes is as short as it goes: Stripe rejects an `expires_at` less than
+// 30 minutes or more than 24 hours from creation.
+const SESSION_EXPIRY_SECONDS = 30 * 60;
 
 async function getBaseUrl(): Promise<string> {
+  // A configured origin wins over the request's own headers. These URLs
+  // decide where Stripe sends a paying customer back to, and
+  // `x-forwarded-host` is attacker-supplied in principle — Vercel
+  // overwrites it in production, which narrows the exposure a lot, but
+  // pinning the origin removes it rather than relying on the platform.
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  if (configured) {
+    return configured.replace(/\/+$/, "");
+  }
+
   const headerList = await headers();
   const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
   const protocol =
@@ -50,6 +62,14 @@ export async function createCheckoutSessionForOrder(
     success_url: `${baseUrl}/confirmation/${order.id}`,
     cancel_url: `${baseUrl}/checkout`,
     expires_at: Math.floor(Date.now() / 1000) + SESSION_EXPIRY_SECONDS,
+  }, {
+    // Keyed on the order, which is itself client-generated and stable
+    // across resubmits, so a retried action returns the session that
+    // already exists instead of leaving a second live one behind. That
+    // matters beyond tidiness: two live sessions for one order means the
+    // first one's `expired` webhook can fire while the customer is still
+    // paying on the second.
+    idempotencyKey: `checkout_session_${order.id}`,
   });
 
   if (!session.url) {

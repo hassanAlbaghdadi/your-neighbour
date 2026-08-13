@@ -89,6 +89,10 @@ describe("createCheckoutSessionForOrder", () => {
           }),
         ],
       }),
+      // Keyed on the order id, which is stable across resubmits, so a
+      // retry returns the existing session instead of leaving a second
+      // live one behind for the same order.
+      { idempotencyKey: `checkout_session_${order.id}` },
     );
   });
 

@@ -1,17 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format, parseISO } from "date-fns";
-import { CheckCircle2, Clock } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClearCartOnSuccess } from "@/components/checkout/clear-cart-on-success";
+import { PendingPayment } from "@/components/checkout/pending-payment";
 import { getOrderById } from "@/lib/services/orders/get-order";
+import { getSettings } from "@/lib/services/settings/get-settings";
 import { formatPrice } from "@/lib/utils";
 
 export default async function ConfirmationPage(
   props: PageProps<"/confirmation/[orderId]">,
 ) {
   const { orderId } = await props.params;
-  const order = await getOrderById(orderId);
+  const [order, settings] = await Promise.all([
+    getOrderById(orderId),
+    getSettings(),
+  ]);
 
   if (!order) {
     notFound();
@@ -22,31 +27,23 @@ export default async function ConfirmationPage(
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6">
       {isPaid && <ClearCartOnSuccess />}
-      <div className="flex flex-col items-center text-center">
-        {isPaid ? (
-          <>
-            <CheckCircle2 className="size-12 text-primary" />
-            <h1 className="mt-4 font-heading text-3xl font-semibold text-foreground">
-              Order Confirmed
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              Thanks, {order.customerName.split(" ")[0]} — we&apos;ll have it
-              ready for pickup.
-            </p>
-          </>
-        ) : (
-          <>
-            <Clock className="size-12 text-muted-foreground" />
-            <h1 className="mt-4 font-heading text-3xl font-semibold text-foreground">
-              Confirming payment…
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              This usually only takes a few seconds. Refresh this page if it
-              doesn&apos;t update.
-            </p>
-          </>
-        )}
-      </div>
+      {isPaid ? (
+        <div className="flex flex-col items-center text-center">
+          <CheckCircle2 className="size-12 text-primary" />
+          <h1 className="mt-4 font-heading text-3xl font-semibold text-foreground">
+            Order Confirmed
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Thanks, {order.customerName.split(" ")[0]} — we&apos;ll have it
+            ready for pickup.
+          </p>
+        </div>
+      ) : (
+        // Polls for the webhook to land rather than asking the customer to
+        // refresh — Stripe's redirect regularly arrives first. See
+        // pending-payment.tsx.
+        <PendingPayment />
+      )}
 
       <div className="mt-8 rounded-xl border border-border bg-card p-6">
         <div className="grid grid-cols-2 gap-4 border-b border-border pb-4 text-sm">
@@ -98,6 +95,31 @@ export default async function ConfirmationPage(
         Order #{order.id.slice(0, 8)} · Status: {order.status} · Payment:{" "}
         {isPaid ? "Paid" : "Pending"}
       </p>
+
+      {/* The confirmation page is where someone comes looking when they need
+          to change something, so the how-to belongs here rather than only
+          on the checkout form they've already left behind. */}
+      {isPaid && (
+        <p className="mt-3 text-center text-sm text-muted-foreground">
+          Need to change or cancel this order?{" "}
+          {settings.contactEmail ? (
+            <>
+              Email{" "}
+              <a
+                href={`mailto:${settings.contactEmail}?subject=${encodeURIComponent(
+                  `Order #${order.id.slice(0, 8)}`,
+                )}`}
+                className="text-primary underline underline-offset-4"
+              >
+                {settings.contactEmail}
+              </a>
+            </>
+          ) : (
+            "Get in touch"
+          )}{" "}
+          and quote order #{order.id.slice(0, 8)}.
+        </p>
+      )}
 
       <div className="mt-8 flex justify-center">
         <Button asChild variant="outline">
