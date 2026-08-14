@@ -220,6 +220,7 @@ export function ProductCard({ product }: { product: Product }) {
               });
               toast.success(`Added ${product.name} to cart`, {
                 description: selectedVariant.label,
+                duration: 2000,
               });
               track("add_to_cart", {
                 product: product.name,

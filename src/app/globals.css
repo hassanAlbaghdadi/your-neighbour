@@ -190,3 +190,10 @@
     letter-spacing: -0.01em;
   }
 }
+
+/* sonner hardcodes the toast description color per-theme instead of using
+   our --normal-text token, so it can end up unreadable against our
+   always-light toast background; force it to match. */
+[data-sonner-toast] [data-description] {
+  color: var(--popover-foreground) !important;
+}

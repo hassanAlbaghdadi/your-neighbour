@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Minus, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -21,6 +23,10 @@ interface CartDrawerProps {
 
 export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
+
+  useEffect(() => {
+    if (open) toast.dismiss();
+  }, [open]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
