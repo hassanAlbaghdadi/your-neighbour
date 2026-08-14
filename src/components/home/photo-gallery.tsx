@@ -11,11 +11,17 @@ interface GalleryPhoto {
   alt: string;
 }
 
-// Same uniform 4:5 card at every breakpoint — only the rendered width
-// changes (lg:w-72/xl:w-80/2xl:w-96 on the figure below), so this just
-// mirrors those widths for the browser's image-request sizing.
+// Deliberately NOT the literal rendered width (lg:w-72/xl:w-80/2xl:w-96 on
+// the figure below) — `sizes` gets multiplied by the *browser's* DPR to
+// pick a srcset candidate, and most desktop monitors report DPR 1, so a
+// literal match would fetch a bare 1x image there while phones (almost
+// always DPR 2-3) automatically get 2-3x for the same vw-based sizes. This
+// pads desktop's values to roughly what a 2x display would need, so a
+// plain 1x monitor is still comfortably oversampled instead of getting the
+// bare minimum — same idea as the vw branches already get for free from
+// phones' higher DPR.
 const SIZES =
-  "(min-width: 1536px) 384px, (min-width: 1280px) 320px, (min-width: 1024px) 288px, (min-width: 640px) 38vw, 72vw";
+  "(min-width: 1536px) 768px, (min-width: 1280px) 640px, (min-width: 1024px) 576px, (min-width: 640px) 38vw, 72vw";
 
 interface PhotoGalleryProps {
   photos: GalleryPhoto[];
@@ -76,8 +82,13 @@ export function PhotoGallery({
           the hero's edge-to-edge treatment instead of leaving the photos
           boxed into the same narrow column as the menu text. One native
           scroll-snap filmstrip at every breakpoint — no JS-driven position,
-          nothing that can jank — touch-pan-x keeps a diagonal swipe from
-          fighting the page's own vertical scroll. Every card is the same
+          nothing that can jank. Deliberately NOT touch-action: pan-x — that
+          restricts panning to horizontal for the whole touch sequence,
+          including on ancestors, so any vertical drag starting on a photo
+          (not just this element) couldn't scroll the page at all. Mobile
+          browsers already disambiguate horizontal-vs-vertical swipe intent
+          natively for a plain overflow-x + scroll-snap track, so no
+          touch-action override is needed here. Every card is the same
           4:5 shape and weight; only its rendered width grows at lg/xl/2xl,
           which is also what widens the "peek" of the next card at the edge.
           From lg, the scrollbar is hidden in favor of the arrow buttons
@@ -87,7 +98,7 @@ export function PhotoGallery({
       <div
         ref={trackRef}
         onScroll={handleScroll}
-        className="mt-8 flex touch-pan-x items-stretch gap-4 overflow-x-auto scroll-px-4 px-4 pb-2 snap-x snap-mandatory [scrollbar-width:none] sm:gap-5 sm:scroll-px-6 sm:px-6 sm:[scrollbar-width:thin] [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-1.5 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-thumb]:bg-terracotta-600/30 sm:[&::-webkit-scrollbar-track]:bg-transparent lg:gap-6 lg:scroll-px-8 lg:px-8 lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden xl:scroll-px-12 xl:px-12 2xl:scroll-px-16 2xl:px-16"
+        className="mt-8 flex items-stretch gap-4 overflow-x-auto scroll-px-4 px-4 pb-2 snap-x snap-mandatory [scrollbar-width:none] sm:gap-5 sm:scroll-px-6 sm:px-6 sm:[scrollbar-width:thin] [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-1.5 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-thumb]:bg-terracotta-600/30 sm:[&::-webkit-scrollbar-track]:bg-transparent lg:gap-6 lg:scroll-px-8 lg:px-8 lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden xl:scroll-px-12 xl:px-12 2xl:scroll-px-16 2xl:px-16"
       >
           {photos.map((photo, index) => (
             <figure
