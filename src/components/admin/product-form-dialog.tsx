@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,7 +86,7 @@ export function ProductFormDialog({
     },
   });
 
-  const { fields, append, remove } = useFieldArray({ control, name: "variants" });
+  const { fields, append, remove, move } = useFieldArray({ control, name: "variants" });
 
   async function handleFileChange(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -101,9 +101,16 @@ export function ProductFormDialog({
 
   async function onSubmit(values: ProductFormInput) {
     setSubmitting(true);
+    const orderedValues = {
+      ...values,
+      variants: values.variants.map((variant, index) => ({
+        ...variant,
+        displayOrder: index,
+      })),
+    };
     const result = product
-      ? await updateProductAction(product.id, values)
-      : await createProductAction(values);
+      ? await updateProductAction(product.id, orderedValues)
+      : await createProductAction(orderedValues);
     setSubmitting(false);
 
     if (!result.success) {
@@ -221,6 +228,30 @@ export function ProductFormDialog({
                 {fields.map((field, index) => (
                   <div key={field.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
                     <div className="flex items-end gap-2">
+                      <div className="mb-2 flex flex-col">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-5"
+                          disabled={index === 0}
+                          onClick={() => move(index, index - 1)}
+                          aria-label="Move size up"
+                        >
+                          <ArrowUp className="size-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-5"
+                          disabled={index === fields.length - 1}
+                          onClick={() => move(index, index + 1)}
+                          aria-label="Move size down"
+                        >
+                          <ArrowDown className="size-3" />
+                        </Button>
+                      </div>
                       <div className="flex-1">
                         <FieldLabel htmlFor={`variants.${index}.label`} className="text-xs font-normal text-muted-foreground">
                           Label
