@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Database } from "@/types/database";
 
 export type Category = Database["public"]["Tables"]["categories"]["Row"];
@@ -15,7 +15,7 @@ export type Product = Database["public"]["Tables"]["products"]["Row"] & {
 // call within the same request dedupe to a single Supabase round-trip
 // instead of two.
 export const getCategories = cache(async (): Promise<Category[]> => {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("categories")
     .select("*")
@@ -29,7 +29,7 @@ export const getCategories = cache(async (): Promise<Category[]> => {
 });
 
 export async function getProducts(): Promise<Product[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("products")
     .select(

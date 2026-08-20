@@ -21,8 +21,10 @@ export async function createCategoryAction(payload: unknown): Promise<ActionResu
 
   try {
     await createCategory(parsed.data);
-    revalidatePath("/admin/products");
-    revalidatePath("/");
+    // Categories drive the shared header/footer nav, which renders on
+    // every route via the root layout — purge the whole layout, not just
+    // "/admin/products" and "/".
+    revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
     if (error instanceof CategoryError) return { success: false, error: error.message };
@@ -44,8 +46,10 @@ export async function updateCategoryAction(
 
   try {
     await updateCategory(id, parsed.data);
-    revalidatePath("/admin/products");
-    revalidatePath("/");
+    // Categories drive the shared header/footer nav, which renders on
+    // every route via the root layout — purge the whole layout, not just
+    // "/admin/products" and "/".
+    revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
     if (error instanceof CategoryError) return { success: false, error: error.message };
@@ -59,8 +63,10 @@ export async function deleteCategoryAction(id: string): Promise<ActionResult> {
 
   try {
     await deleteCategory(id);
-    revalidatePath("/admin/products");
-    revalidatePath("/");
+    // Categories drive the shared header/footer nav, which renders on
+    // every route via the root layout — purge the whole layout, not just
+    // "/admin/products" and "/".
+    revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
     console.error("deleteCategoryAction failed:", error);

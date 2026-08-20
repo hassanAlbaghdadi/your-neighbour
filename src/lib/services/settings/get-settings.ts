@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 export interface StoreSettings {
   businessName: string;
@@ -23,7 +23,7 @@ const DEFAULTS: StoreSettings = {
 // call within the same request dedupe to a single Supabase round-trip
 // instead of two.
 export const getSettings = cache(async (): Promise<StoreSettings> => {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase.from("settings").select("key, value");
 
   if (error) {

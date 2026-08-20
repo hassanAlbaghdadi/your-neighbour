@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Database } from "@/types/database";
 
 export type StoryPhoto = Database["public"]["Tables"]["homepage_photos"]["Row"];
@@ -20,7 +20,7 @@ const STORY_SECTIONS = [
 ] as const;
 
 export async function getStoryPhotos(): Promise<StoryPhotos> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("homepage_photos")
     .select("*")

@@ -30,6 +30,9 @@ export async function createProductAction(payload: unknown): Promise<ActionResul
     });
     revalidatePath("/admin/products");
     revalidatePath("/");
+    // Our Story falls back to product photos when no story-specific
+    // photo is set for a section.
+    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     if (error instanceof ProductError) return { success: false, error: error.message };
@@ -58,6 +61,9 @@ export async function updateProductAction(
     });
     revalidatePath("/admin/products");
     revalidatePath("/");
+    // Our Story falls back to product photos when no story-specific
+    // photo is set for a section.
+    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     if (error instanceof ProductError) return { success: false, error: error.message };
@@ -73,6 +79,9 @@ export async function deleteProductAction(id: string): Promise<ActionResult> {
     await deleteProduct(id);
     revalidatePath("/admin/products");
     revalidatePath("/");
+    // Our Story falls back to product photos when no story-specific
+    // photo is set for a section.
+    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     if (error instanceof ProductError) return { success: false, error: error.message };
@@ -91,6 +100,9 @@ export async function setProductAvailabilityAction(
     await setProductAvailability(id, isAvailable);
     revalidatePath("/admin/products");
     revalidatePath("/");
+    // Our Story falls back to product photos when no story-specific
+    // photo is set for a section.
+    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     console.error("setProductAvailabilityAction failed:", error);
@@ -108,6 +120,9 @@ export async function setVariantAvailabilityAction(
     await setVariantAvailability(id, isAvailable);
     revalidatePath("/admin/products");
     revalidatePath("/");
+    // Our Story falls back to product photos when no story-specific
+    // photo is set for a section.
+    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     console.error("setVariantAvailabilityAction failed:", error);

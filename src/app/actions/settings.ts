@@ -27,8 +27,10 @@ export async function updateSettingsAction(
 
   try {
     await updateSettings(parsed.data);
-    revalidatePath("/admin/settings");
-    revalidatePath("/checkout");
+    // Settings feed the shared header/footer (root layout) plus
+    // StoryFacts on "/" and "/our-story" — purge the whole layout rather
+    // than enumerating every affected route.
+    revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
     console.error("updateSettingsAction failed:", error);

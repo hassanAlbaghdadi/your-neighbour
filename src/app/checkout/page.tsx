@@ -3,6 +3,10 @@ import { getSettings } from "@/lib/services/settings/get-settings";
 import { getOrderCountsByDate } from "@/lib/services/orders/get-order-counts";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 
+// Depends on "today" and live per-date order counts — must never be
+// served from a build-time-frozen static cache.
+export const dynamic = "force-dynamic";
+
 export default async function CheckoutPage() {
   const today = new Date();
   const rangeEnd = addDays(today, 60);
