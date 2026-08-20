@@ -18,6 +18,12 @@ interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
+  // True once the initial read from localStorage has resolved. Callers that
+  // clear or otherwise mutate the cart on mount (see ClearCartOnSuccess)
+  // need to wait for this — clearing before hydration finishes just gets
+  // clobbered when the hydration effect's setItems(parsedData) lands after
+  // it, since child effects commit before their parent's.
+  hydrated: boolean;
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
@@ -110,6 +116,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     items,
     itemCount,
     subtotal,
+    hydrated,
     addItem,
     removeItem,
     updateQuantity,

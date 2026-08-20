@@ -10,14 +10,20 @@ import { useCart } from "@/context/cart-context";
  * Checkout attempt returns the customer to a cart that's still there.
  */
 export function ClearCartOnSuccess() {
-  const { clearCart } = useCart();
+  const { hydrated, clearCart } = useCart();
   const cleared = useRef(false);
 
   useEffect(() => {
-    if (cleared.current) return;
+    // Stripe's redirect back is a real navigation, so CartProvider mounts
+    // fresh here and its own effect re-reads the (still-populated)
+    // localStorage cart. That effect commits after this one — child effects
+    // run before their parent's — so clearing before hydration finishes
+    // gets silently overwritten by the stale cart it loads back in. Waiting
+    // for hydrated guarantees the clear is the last write.
+    if (!hydrated || cleared.current) return;
     cleared.current = true;
     clearCart();
-  }, [clearCart]);
+  }, [hydrated, clearCart]);
 
   return null;
 }
