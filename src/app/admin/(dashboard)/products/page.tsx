@@ -5,10 +5,6 @@ import { ProductFormDialog } from "@/components/admin/product-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
-// Admin-only, low-traffic route — always render fresh rather than relying
-// on revalidatePath coverage staying exhaustive as the app grows.
-export const dynamic = "force-dynamic";
-
 export default async function AdminProductsPage() {
   const [categories, products] = await Promise.all([
     getCategories(),

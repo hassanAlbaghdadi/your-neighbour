@@ -1,10 +1,6 @@
 import { getSettings } from "@/lib/services/settings/get-settings";
 import { SettingsForm } from "@/components/admin/settings-form";
 
-// Admin-only, low-traffic route — always render fresh rather than relying
-// on revalidatePath coverage staying exhaustive as the app grows.
-export const dynamic = "force-dynamic";
-
 export default async function AdminSettingsPage() {
   const settings = await getSettings();
 

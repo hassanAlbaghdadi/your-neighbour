@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const fromMock = vi.fn();
 
-vi.mock("@/lib/supabase/public", () => ({
-  createPublicClient: () => ({ from: fromMock }),
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: async () => ({ from: fromMock }),
 }));
 
 const { getSettings } = await import("./get-settings");

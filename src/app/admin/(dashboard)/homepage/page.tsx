@@ -1,10 +1,6 @@
 import { getHomepagePhotos } from "@/lib/services/homepage/get-homepage-photos";
 import { HomepagePhotosManager } from "@/components/admin/homepage-photos-manager";
 
-// Admin-only, low-traffic route — always render fresh rather than relying
-// on revalidatePath coverage staying exhaustive as the app grows.
-export const dynamic = "force-dynamic";
-
 export default async function AdminHomepagePage() {
   const { hero, gallery } = await getHomepagePhotos();
 

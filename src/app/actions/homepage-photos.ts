@@ -36,9 +36,6 @@ export async function setHeroPhotoAction(
     await setHeroPhoto(parsed.data.imageUrl, parsed.data.altText);
     revalidatePath("/admin/homepage");
     revalidatePath("/");
-    // Our Story falls back to the homepage hero photo when no
-    // story-specific hero is set.
-    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     if (error instanceof HomepagePhotoError) return { success: false, error: error.message };
@@ -54,9 +51,6 @@ export async function clearHeroPhotoAction(): Promise<ActionResult> {
     await clearHeroPhoto();
     revalidatePath("/admin/homepage");
     revalidatePath("/");
-    // Our Story falls back to the homepage hero photo when no
-    // story-specific hero is set.
-    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     if (error instanceof HomepagePhotoError) return { success: false, error: error.message };
@@ -81,9 +75,6 @@ export async function addGalleryPhotoAction(
     const photo = await addGalleryPhoto(parsed.data);
     revalidatePath("/admin/homepage");
     revalidatePath("/");
-    // Our Story falls back to the homepage hero photo when no
-    // story-specific hero is set.
-    revalidatePath("/our-story");
     return { success: true, data: photo };
   } catch (error) {
     if (error instanceof HomepagePhotoError) return { success: false, error: error.message };
@@ -107,9 +98,6 @@ export async function updateGalleryPhotoAltAction(
     await updateGalleryPhoto(id, parsed.data);
     revalidatePath("/admin/homepage");
     revalidatePath("/");
-    // Our Story falls back to the homepage hero photo when no
-    // story-specific hero is set.
-    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     if (error instanceof HomepagePhotoError) return { success: false, error: error.message };
@@ -125,9 +113,6 @@ export async function deleteGalleryPhotoAction(id: string): Promise<ActionResult
     await deleteGalleryPhoto(id);
     revalidatePath("/admin/homepage");
     revalidatePath("/");
-    // Our Story falls back to the homepage hero photo when no
-    // story-specific hero is set.
-    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     if (error instanceof HomepagePhotoError) return { success: false, error: error.message };
@@ -150,9 +135,6 @@ export async function reorderGalleryPhotosAction(
     await reorderGalleryPhotos(parsed.data.orderedIds);
     revalidatePath("/admin/homepage");
     revalidatePath("/");
-    // Our Story falls back to the homepage hero photo when no
-    // story-specific hero is set.
-    revalidatePath("/our-story");
     return { success: true };
   } catch (error) {
     console.error("reorderGalleryPhotosAction failed:", error);

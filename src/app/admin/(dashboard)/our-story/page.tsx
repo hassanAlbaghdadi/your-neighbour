@@ -1,10 +1,6 @@
 import { getStoryPhotos } from "@/lib/services/story/get-story-photos";
 import { StoryPhotosManager } from "@/components/admin/story-photos-manager";
 
-// Admin-only, low-traffic route — always render fresh rather than relying
-// on revalidatePath coverage staying exhaustive as the app grows.
-export const dynamic = "force-dynamic";
-
 export default async function AdminOurStoryPage() {
   const { hero, beat1, beat2, timeline, gallery } = await getStoryPhotos();
 
