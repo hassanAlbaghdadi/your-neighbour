@@ -50,7 +50,7 @@ export async function createCheckoutSessionForOrder(
     line_items: order.items.map((item) => ({
       quantity: item.quantity,
       price_data: {
-        currency: "usd",
+        currency: "cad",
         unit_amount: Math.round(item.unitPrice * 100),
         product_data: {
           name: item.variantLabel

@@ -46,9 +46,9 @@ export function resolveSummaryDate(param: string | undefined, today: string): st
   return isValid(parseISO(param)) ? param : today
 }
 
-const priceFormatter = new Intl.NumberFormat("en-US", {
+const priceFormatter = new Intl.NumberFormat("en-CA", {
   style: "currency",
-  currency: "USD",
+  currency: "CAD",
 })
 
 /**

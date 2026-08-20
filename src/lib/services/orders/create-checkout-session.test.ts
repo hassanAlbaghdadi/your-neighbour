@@ -75,7 +75,7 @@ describe("createCheckoutSessionForOrder", () => {
           expect.objectContaining({
             quantity: 2,
             price_data: expect.objectContaining({
-              currency: "usd",
+              currency: "cad",
               unit_amount: 800,
               product_data: { name: "Sourdough Loaf — Large" },
             }),
