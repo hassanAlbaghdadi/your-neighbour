@@ -5,6 +5,7 @@ import { getBakingSummary } from "@/lib/services/orders/get-baking-summary";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, resolveSummaryDate } from "@/lib/utils";
+import { businessToday } from "@/lib/time";
 import type { OrderStatus } from "@/types/database";
 
 const FILTERS = ["today", "pending", "preparing", "ready", "completed"] as const;
@@ -37,7 +38,7 @@ export default async function AdminOrdersPage({
   const params = await searchParams;
   const filter = isFilter(params.filter) ? params.filter : "today";
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = businessToday();
   const summaryDate = resolveSummaryDate(
     typeof params.summaryDate === "string" ? params.summaryDate : undefined,
     today,

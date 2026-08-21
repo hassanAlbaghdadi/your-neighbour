@@ -27,6 +27,7 @@ import {
 import { useCart } from "@/context/cart-context";
 import { createOrderAction } from "@/app/actions/orders";
 import { formatPrice } from "@/lib/utils";
+import { pickupInstant } from "@/lib/time";
 import {
   checkoutFormSchema,
   type CheckoutFormValues,
@@ -123,7 +124,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     if (settings.blackoutDates.includes(dateStr)) return true;
     if ((orderCounts[dateStr] ?? 0) >= settings.maxOrdersPerDay) return true;
     const hasValidSlot = settings.pickupTimeSlots.some(
-      (slot) => new Date(`${dateStr}T${slot}:00`) >= minAllowed,
+      (slot) => pickupInstant(dateStr, slot) >= minAllowed,
     );
     return !hasValidSlot;
   }
@@ -132,7 +133,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     if (!selectedDate) return [];
     const dateStr = format(selectedDate, "yyyy-MM-dd");
     return settings.pickupTimeSlots.filter(
-      (slot) => new Date(`${dateStr}T${slot}:00`) >= minAllowed,
+      (slot) => pickupInstant(dateStr, slot) >= minAllowed,
     );
   }, [selectedDate, settings.pickupTimeSlots, minAllowed]);
 

@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
 import { getSettings } from "@/lib/services/settings/get-settings";
+import { pickupInstant } from "@/lib/time";
 import type { CreateOrderInput } from "@/lib/validations/order";
 import type { OrderStatus, PaymentStatus } from "@/types/database";
 
@@ -49,7 +50,7 @@ export async function processNewOrder(
     throw new OrderError("We're closed for orders on the selected date.");
   }
 
-  const pickupDateTime = new Date(`${input.pickupDate}T${input.pickupTime}:00`);
+  const pickupDateTime = pickupInstant(input.pickupDate, input.pickupTime);
   const minAllowed = new Date(
     Date.now() + settings.minAdvanceHours * 60 * 60 * 1000,
   );
