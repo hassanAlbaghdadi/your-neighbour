@@ -14,7 +14,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useCart } from "@/context/cart-context";
-import { cn, scrollToAnchor } from "@/lib/utils";
+import { scrollToAnchor } from "@/lib/utils";
 import { track, trackOnce } from "@/lib/analytics";
 import { INSTAGRAM_URL } from "@/lib/social";
 
@@ -22,11 +22,11 @@ export function SiteHeader() {
   const { itemCount } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const [pastHero, setPastHero] = useState(false);
 
+  // Funnel instrumentation only — nothing in the header renders off this.
   useEffect(() => {
-    // Absent on pages with no hero (e.g. /checkout) — the re-entry link
-    // just stays hidden there, which is the correct fallback.
+    // Absent on pages with no hero (e.g. /checkout), where there's no
+    // hero funnel to measure in the first place.
     const hero = document.getElementById("hero");
     if (!hero) return;
 
@@ -34,7 +34,6 @@ export function SiteHeader() {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setPastHero(!entry.isIntersecting);
         if (!entry.isIntersecting) {
           trackOnce("hero_exit");
         }
@@ -48,7 +47,7 @@ export function SiteHeader() {
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
-        <div className="mx-auto grid h-16 max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
           <div className="flex items-center gap-3 sm:gap-6">
             <Button
               variant="ghost"
@@ -74,6 +73,21 @@ export function SiteHeader() {
               </span>
             </Link>
 
+            {/* Points at "/#menu" rather than "#menu" so it still resolves
+                from pages with no #menu of their own (e.g. /our-story) —
+                scrollToAnchor no-ops when the id isn't on the current page
+                and falls through to this href. */}
+            <Link
+              href="/#menu"
+              onClick={(e) => {
+                scrollToAnchor(e, "menu");
+                track("menu_reentry_click");
+              }}
+              className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
+            >
+              Menu
+            </Link>
+
             <Link
               href="/our-story"
               className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
@@ -82,31 +96,7 @@ export function SiteHeader() {
             </Link>
           </div>
 
-          {/* Reserves its grid cell even while hidden, so it fades in without
-              shifting the wordmark or cart icon. Same mechanism at every
-              breakpoint — mobile is the one most likely to scroll past the
-              hero (see stat-strip cadence finding), so this can't be
-              desktop-only. Points at "/#menu" rather than "#menu" so it
-              still resolves correctly from pages with no #menu of their
-              own (e.g. /our-story) — scrollToAnchor no-ops when the id
-              isn't on the current page and falls through to this href. */}
-          <Link
-            href="/#menu"
-            onClick={(e) => {
-              scrollToAnchor(e, "menu");
-              track("menu_reentry_click");
-            }}
-            aria-hidden={!pastHero}
-            tabIndex={pastHero ? 0 : -1}
-            className={cn(
-              "justify-self-center rounded-full border border-terracotta-200 bg-terracotta-50 px-3.5 py-1.5 text-sm font-medium text-terracotta-700 motion-safe:transition-opacity motion-safe:duration-300 motion-safe:ease-out hover:bg-terracotta-100",
-              pastHero ? "opacity-100" : "pointer-events-none opacity-0",
-            )}
-          >
-            Order for pickup
-          </Link>
-
-          <div className="flex items-center gap-1 justify-self-end">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button
               variant="ghost"
               size="icon"
