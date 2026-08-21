@@ -16,18 +16,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatPrice } from "@/lib/utils";
+import { parseAllergens } from "@/lib/allergens";
 import { useCart } from "@/context/cart-context";
 import type { Product, ProductVariant } from "@/lib/services/products/get-products";
 
-function formatAllergenTags(raw: string): string {
-  return raw
-    .replace(/^contains,?\s*/i, "")
-    .split(",")
-    .map((part) => part.trim().replace(/\s*etc\.?\s*$/i, "").trim())
-    .filter((part) => part.length > 0)
-    .map((part) => part.toLowerCase())
-    .join(", ");
-}
 
 function VariantSegments({
   variants,
@@ -102,7 +94,14 @@ function VariantSegments({
   );
 }
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  sharedAllergens = [],
+}: {
+  product: Product;
+  /** Stated once above the grid, so it's subtracted from this card's line. */
+  sharedAllergens?: string[];
+}) {
   const { addItem } = useCart();
 
   const firstAvailable = product.variants.find((v) => v.is_available);
@@ -123,6 +122,10 @@ export function ProductCard({ product }: { product: Product }) {
   // means the non-selected ones are already loaded (still lazy, since
   // they're all in the same on-screen position as the visible one) by the
   // time a size is picked.
+  const extraAllergens = parseAllergens(product.allergens).filter(
+    (token) => !sharedAllergens.includes(token),
+  );
+
   const variantImageUrls = [
     ...new Set(
       product.variants
@@ -194,17 +197,18 @@ export function ProductCard({ product }: { product: Product }) {
         )}
       </CardHeader>
 
-      {/* Demoted from uppercase semibold near-black, which made the least
-          distinguishing text on the card the most visually assertive --
-          every product here contains gluten and dairy, and all but one
-          contain eggs and sesame. It's reference material for the few who
-          need it, not a basis for choosing between items, so it reads as a
-          footnote now. "Contains" is explicit because a bare list gave no
-          clue whether it meant contains or free-of. */}
-      {product.allergens && (
+      {/* Only what this product adds on top of the menu-wide note above the
+          grid. Every item here contains gluten and dairy, so repeating that
+          six times said nothing and buried the part that differs -- which is
+          the part someone with an allergy is actually scanning for. Reads as
+          a footnote rather than the uppercase semibold near-black it was,
+          which had made the least distinguishing text the loudest on the
+          card. Nothing renders when a product adds nothing: the note above
+          already covers it. */}
+      {extraAllergens.length > 0 && (
         <CardContent>
           <p className="text-[11px] text-muted-foreground">
-            Contains {formatAllergenTags(product.allergens)}
+            Also contains {extraAllergens.join(", ")}
           </p>
         </CardContent>
       )}

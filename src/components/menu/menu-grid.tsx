@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/menu/product-card";
 import { trackOnce } from "@/lib/analytics";
+import { sharedAllergens, formatAllergenProse } from "@/lib/allergens";
 import type { Category, Product } from "@/lib/services/products/get-products";
 
 interface MenuGridProps {
@@ -26,6 +27,14 @@ const SHOW_CATEGORY_FILTER = false;
 export function MenuGrid({ categories, products }: MenuGridProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Stated once here rather than on all six cards. Returns nothing unless
+  // every product declares the allergen, so the claim can only ever be true
+  // of the whole menu -- see lib/allergens.ts for the fail-safes.
+  const shared = useMemo(
+    () => sharedAllergens(products.map((product) => product.allergens)),
+    [products],
+  );
 
   const filtered = useMemo(() => {
     if (!activeCategory) return products;
@@ -72,6 +81,13 @@ export function MenuGrid({ categories, products }: MenuGridProps) {
         </div>
       )}
 
+      {shared.length > 0 && (
+        <p className="mb-6 text-sm text-muted-foreground">
+          Everything on the menu contains {formatAllergenProse(shared)}. Each
+          item lists anything further below it.
+        </p>
+      )}
+
       {filtered.length === 0 ? (
         <p className="py-16 text-center text-muted-foreground">
           Nothing on the menu right now.
@@ -79,7 +95,11 @@ export function MenuGrid({ categories, products }: MenuGridProps) {
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              sharedAllergens={shared}
+            />
           ))}
         </div>
       )}
