@@ -33,14 +33,20 @@ export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
         </div>
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-t from-espresso-900/85 via-espresso-900/10 to-transparent" />
+      {/* Sized for the worst photo, not this one. The hero image is
+          admin-uploadable, so the scrim has to hold up against a near-white
+          upload: over pure white the old via-10% put the subhead at 1.12:1.
+          The stops keep >=70% across the band the text occupies (roughly the
+          bottom 35%), which clears 4.5:1 at text-lg even on white, then fall
+          to nothing by 80% so the top of the photo stays untouched. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-espresso-900/95 via-espresso-900/70 via-35% to-transparent to-80%" />
 
       <div className="relative flex h-full items-end">
         <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
           <h1 className="max-w-lg font-heading text-4xl font-semibold text-cream-50 sm:text-5xl">
             Fresh, baked to order
           </h1>
-          <p className="mt-4 max-w-md text-base text-cream-50/85 sm:text-lg">
+          <p className="mt-4 max-w-md text-base text-cream-50/95 sm:text-lg">
             Pre-order your favorites for local pickup — baked fresh the
             morning you pick up.
           </p>
