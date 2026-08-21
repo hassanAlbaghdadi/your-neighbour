@@ -38,8 +38,7 @@ export function StoryHero({ photo }: StoryHeroProps) {
         </h1>
         <p className="mt-4 max-w-md text-base text-cream-50/85 sm:text-lg">
           Your Neighbour is Sarah&apos;s kitchen in the North End — no
-          storefront, no shelf, just fresh bread and pastry baked to order
-          for the people down the street.
+          storefront, no shelf, just fresh stuffed bread and hot karak tea baked to order for the people down the street.
         </p>
       </div>
     </section>

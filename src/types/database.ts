@@ -243,8 +243,7 @@ export interface Database {
             | "story_hero"
             | "story_beat_1"
             | "story_beat_2"
-            | "story_timeline"
-            | "story_gallery";
+            | "story_beat_3";
           image_url: string;
           alt_text: string | null;
           display_order: number;
@@ -259,8 +258,7 @@ export interface Database {
             | "story_hero"
             | "story_beat_1"
             | "story_beat_2"
-            | "story_timeline"
-            | "story_gallery";
+            | "story_beat_3";
           image_url: string;
           alt_text?: string | null;
           display_order?: number;

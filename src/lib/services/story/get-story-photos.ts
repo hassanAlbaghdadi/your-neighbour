@@ -7,16 +7,14 @@ export interface StoryPhotos {
   hero: StoryPhoto | null;
   beat1: StoryPhoto | null;
   beat2: StoryPhoto | null;
-  timeline: StoryPhoto[];
-  gallery: StoryPhoto[];
+  beat3: StoryPhoto | null;
 }
 
 const STORY_SECTIONS = [
   "story_hero",
   "story_beat_1",
   "story_beat_2",
-  "story_timeline",
-  "story_gallery",
+  "story_beat_3",
 ] as const;
 
 export async function getStoryPhotos(): Promise<StoryPhotos> {
@@ -35,7 +33,6 @@ export async function getStoryPhotos(): Promise<StoryPhotos> {
     hero: data.find((photo) => photo.section === "story_hero") ?? null,
     beat1: data.find((photo) => photo.section === "story_beat_1") ?? null,
     beat2: data.find((photo) => photo.section === "story_beat_2") ?? null,
-    timeline: data.filter((photo) => photo.section === "story_timeline"),
-    gallery: data.filter((photo) => photo.section === "story_gallery"),
+    beat3: data.find((photo) => photo.section === "story_beat_3") ?? null,
   };
 }

@@ -97,7 +97,7 @@ CREATE TABLE homepage_photos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   section TEXT NOT NULL CHECK (section IN (
     'hero', 'gallery',
-    'story_hero', 'story_beat_1', 'story_beat_2', 'story_timeline', 'story_gallery'
+    'story_hero', 'story_beat_1', 'story_beat_2', 'story_beat_3'
   )),
   image_url TEXT NOT NULL,
   alt_text TEXT,

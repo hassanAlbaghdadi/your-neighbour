@@ -7,35 +7,7 @@ import { StoryHero } from "@/components/story/story-hero";
 import { NarrativeBeat } from "@/components/story/narrative-beat";
 import { PullQuote } from "@/components/story/pull-quote";
 import { StoryFacts } from "@/components/home/story-facts";
-import { DayInTheLife, type TimelineStep } from "@/components/story/day-in-the-life";
-import { PhotoGallery } from "@/components/home/photo-gallery";
 import { StoryCta } from "@/components/story/story-cta";
-
-const TIMELINE_COPY: Omit<TimelineStep, "photo">[] = [
-  {
-    time: "4:00 AM",
-    title: "Flour & water",
-    description:
-      "The first mix of the day, timed against whichever orders need the longest proof.",
-  },
-  {
-    time: "7:30 AM",
-    title: "Shape & proof",
-    description:
-      "Loaves and pastries take their final shape and rest until they're ready for the oven.",
-  },
-  {
-    time: "9:00 AM",
-    title: "Into the oven",
-    description:
-      "Everything bakes in small batches — never more trays than can be watched at once.",
-  },
-  {
-    time: "10:30 AM",
-    title: "Ready for pickup",
-    description: "Boxed up warm and waiting at the door for whoever ordered it.",
-  },
-];
 
 export default async function OurStoryPage() {
   const [products, settings, homepagePhotos, storyPhotos] = await Promise.all([
@@ -45,9 +17,7 @@ export default async function OurStoryPage() {
     getStoryPhotos(),
   ]);
 
-  const [autoHero, autoBeat1, autoBeat2, ...autoRest] = resolveProductPhotos(products);
-  const autoTimeline = autoRest.slice(0, 4);
-  const autoGallery = autoRest.slice(4);
+  const [autoHero, autoBeat1, autoBeat2, autoBeat3] = resolveProductPhotos(products);
 
   const heroPhoto = storyPhotos.hero
     ? { src: storyPhotos.hero.image_url, alt: storyPhotos.hero.alt_text ?? "" }
@@ -63,23 +33,9 @@ export default async function OurStoryPage() {
     ? { src: storyPhotos.beat2.image_url, alt: storyPhotos.beat2.alt_text ?? "" }
     : (autoBeat2 ?? null);
 
-  const timelinePhotoPool =
-    storyPhotos.timeline.length > 0
-      ? storyPhotos.timeline.map((p) => ({ src: p.image_url, alt: p.alt_text ?? "" }))
-      : autoTimeline;
-
-  const timelineSteps: TimelineStep[] = TIMELINE_COPY.map((copy, index) => ({
-    ...copy,
-    photo:
-      timelinePhotoPool.length > 0
-        ? timelinePhotoPool[index % timelinePhotoPool.length]
-        : null,
-  }));
-
-  const galleryPhotos =
-    storyPhotos.gallery.length > 0
-      ? storyPhotos.gallery.map((p) => ({ src: p.image_url, alt: p.alt_text ?? "" }))
-      : autoGallery;
+  const beat3Photo = storyPhotos.beat3
+    ? { src: storyPhotos.beat3.image_url, alt: storyPhotos.beat3.alt_text ?? "" }
+    : (autoBeat3 ?? null);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -87,42 +43,40 @@ export default async function OurStoryPage() {
 
       <NarrativeBeat photo={beat1Photo} imagePosition="right" background="cream">
         <p className="font-heading text-xl leading-relaxed text-foreground sm:text-2xl">
-          Sarah started baking the way most people do — for family, on
-          weekends, because it was the best part of the week.
+          Your Neighbour started the way most good things do — at home, with family, friends, and a lot of baking.
         </p>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Neighbours started asking for a loaf of their own. Then two. Then
-          a standing order.
+          Sarah started baking on weekends because, for her, food has always been a way of showing love.
+          It was how she made people feel at home, especially after moving to Canada.
+          Before long, family and friends started asking for a pan of their own. Then another. And another.
         </p>
       </NarrativeBeat>
 
       <NarrativeBeat photo={beat2Photo} imagePosition="left" background="ivory">
         <p className="font-heading text-xl leading-relaxed text-foreground sm:text-2xl">
-          There was never a plan to open a shop — just an oven that kept
-          getting used a little more, until baking to order became the
-          whole thing.
+          There was never a plan to open a bakery.
+          Just an oven that kept getting used a little more, and a love for making something from scratch and sharing it with the people around her.
         </p>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Nothing here comes from a wholesale supplier or a walk-in
-          freezer. Every order starts as flour, water, and time, mixed in
-          the same kitchen it&apos;s picked up from.
+          After a lot of convincing, Your Neighbour was born — a small, homegrown bakery with a simple mission: to spread love through food, bring people together, and build connections with our neighbours, local businesses, and communities.
+        </p>
+      </NarrativeBeat>
+
+      <NarrativeBeat photo={beat3Photo} imagePosition="right" background="cream">
+        <p className="font-heading text-xl leading-relaxed text-foreground sm:text-2xl">
+          Nothing here comes from a wholesale supplier or a walk-in freezer.
+        </p>
+        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+          Every order starts with simple ingredients, a little patience, and a whole lot of care — made in the same kitchen where you pick it up.
         </p>
       </NarrativeBeat>
 
       <PullQuote
-        quote="I bake the way I'd want to be baked for — like it's going to someone I actually know. Most days, it is."
+        quote="I bake the way I’d bake for my family and friends — like it’s going to someone I actually know. Most days, it is."
         attribution="Sarah, Your Neighbour"
       />
 
       <StoryFacts minAdvanceHours={settings.minAdvanceHours} />
-
-      <DayInTheLife steps={timelineSteps} />
-
-      <PhotoGallery
-        photos={galleryPhotos}
-        eyebrow="Behind the counter"
-        heading="One more look inside"
-      />
 
       <StoryCta />
     </div>
