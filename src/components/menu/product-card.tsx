@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ImageOff, Plus } from "lucide-react";
+import { ImageOff, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn, formatPrice } from "@/lib/utils";
 import { parseAllergens } from "@/lib/allergens";
 import { useCart } from "@/context/cart-context";
+import { MAX_ITEM_QUANTITY } from "@/lib/validations/order";
 import type { Product, ProductVariant } from "@/lib/services/products/get-products";
 
 
@@ -25,10 +26,12 @@ function VariantSegments({
   variants,
   selectedId,
   onSelect,
+  groupLabel,
 }: {
   variants: ProductVariant[];
   selectedId: string | undefined;
   onSelect: (id: string) => void;
+  groupLabel: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
@@ -53,8 +56,40 @@ function VariantSegments({
     return () => window.removeEventListener("resize", reposition);
   }, []);
 
+  // Arrow keys move between options and the group is a single tab stop, per
+  // the radiogroup pattern. Previously each variant was its own tab stop,
+  // which put 26 of them between the top of the menu and the last card.
+  function moveSelection(offset: number) {
+    const selectable = variants.filter((variant) => variant.is_available);
+    if (selectable.length === 0) return;
+    const current = selectable.findIndex((variant) => variant.id === selectedId);
+    const next =
+      selectable[
+        (((current === -1 ? 0 : current + offset) % selectable.length) +
+          selectable.length) %
+          selectable.length
+      ];
+    onSelect(next.id);
+    containerRef.current
+      ?.querySelector<HTMLElement>(`[data-variant-id="${next.id}"]`)
+      ?.focus();
+  }
+
+  function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      moveSelection(1);
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSelection(-1);
+    }
+  }
+
   return (
     <div
+      role="radiogroup"
+      aria-label={groupLabel}
+      onKeyDown={onKeyDown}
       ref={containerRef}
       // Fills the card's measure rather than hugging its labels. Hugging
       // meant the right edge landed wherever the text ended -- 30px from the
@@ -82,10 +117,17 @@ function VariantSegments({
         <button
           key={variant.id}
           type="button"
+          role="radio"
+          data-variant-id={variant.id}
           data-selected={variant.id === selectedId}
-          disabled={!variant.is_available}
-          onClick={() => onSelect(variant.id)}
-          aria-pressed={variant.id === selectedId}
+          // aria-disabled, not disabled: a disabled button leaves the tab
+          // order entirely, so a keyboard or screen reader user had no way to
+          // discover that a sold-out size even exists. The line-through was a
+          // visual-only signal.
+          aria-disabled={!variant.is_available || undefined}
+          onClick={() => variant.is_available && onSelect(variant.id)}
+          aria-checked={variant.id === selectedId}
+          tabIndex={variant.id === selectedId ? 0 : -1}
           className={cn(
             // basis-0 so every segment takes an equal share of the measure
             // regardless of label length, and min-w-0 so a long label wraps
@@ -127,6 +169,7 @@ export function ProductCard({
   const selectedVariant =
     product.variants.find((v) => v.id === selectedVariantId) ?? product.variants[0];
 
+  const [quantity, setQuantity] = useState(1);
   const isOrderable = product.is_available && selectedVariant?.is_available;
   const displayImageUrl = selectedVariant?.image_url ?? product.image_url;
 
@@ -161,7 +204,12 @@ export function ProductCard({
             <Image
               key={url}
               src={url}
-              alt={product.name}
+              // All variant photos stay mounted so switching size doesn't
+              // wait on a fetch, but opacity:0 does not remove a node from
+              // the accessibility tree -- every one of them was being
+              // announced. Only the visible one carries the name.
+              alt={url === displayImageUrl ? product.name : ""}
+              aria-hidden={url !== displayImageUrl || undefined}
               fill
               sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
               className={cn(
@@ -239,42 +287,97 @@ export function ProductCard({
               variants={product.variants}
               selectedId={selectedVariantId}
               onSelect={setSelectedVariantId}
+              groupLabel={`Size for ${product.name}`}
             />
           </CardContent>
         )}
 
-        {/* justify-between, not justify-end: title, description, allergens
-            and the picker all start on the same left edge, and the footer
-            used to swing hard right and leave ~45% of the row empty. The
-            price now anchors that rail and the CTA holds the right. */}
-        <CardFooter className="items-center justify-between gap-3 bg-transparent">
-          <span className="text-lg font-semibold text-foreground tabular-nums">
-            {formatPrice(selectedVariant?.price ?? 0)}
-          </span>
+        {/* Two rows rather than one: a stepper, the price and a legible CTA
+            don't fit on a single line at 320px. Splitting it also lets the
+            primary action run full width. Price stays next to the picker
+            rather than beside the title, since selecting a size is what
+            changes it. */}
+        <CardFooter className="flex-col items-stretch gap-3 bg-transparent">
+          <div className="flex items-center justify-between">
+            <span
+              // The price changes when a size is chosen, and that change was
+              // silent -- the radio announces its own label, this announces
+              // what it now costs.
+              aria-live="polite"
+              aria-atomic="true"
+              className="text-lg font-semibold text-foreground tabular-nums"
+            >
+              {formatPrice(selectedVariant?.price ?? 0)}
+            </span>
+
+            {/* Same control as the cart drawer's, deliberately. Adding six of
+                something meant six taps and six stacked toasts. */}
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={!isOrderable || quantity <= 1}
+                onClick={() => setQuantity((n) => Math.max(1, n - 1))}
+                aria-label={`Decrease quantity of ${product.name}`}
+              >
+                <Minus />
+              </Button>
+              <span
+                aria-live="polite"
+                aria-atomic="true"
+                className="w-6 text-center text-sm tabular-nums"
+              >
+                {quantity}
+              </span>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={!isOrderable || quantity >= MAX_ITEM_QUANTITY}
+                onClick={() =>
+                  setQuantity((n) => Math.min(MAX_ITEM_QUANTITY, n + 1))
+                }
+                aria-label={`Increase quantity of ${product.name}`}
+              >
+                <Plus />
+              </Button>
+            </div>
+          </div>
+
           <Button
             variant={isOrderable ? "default" : "secondary"}
             disabled={!isOrderable || !selectedVariant}
+            className="w-full"
             onClick={() => {
               if (!selectedVariant) return;
-              addItem({
-                productId: product.id,
-                variantId: selectedVariant.id,
-                name: product.name,
-                variantLabel: selectedVariant.label,
-                slug: product.slug,
-                price: selectedVariant.price,
-                imageUrl: displayImageUrl,
-              });
+              addItem(
+                {
+                  productId: product.id,
+                  variantId: selectedVariant.id,
+                  name: product.name,
+                  variantLabel: selectedVariant.label,
+                  slug: product.slug,
+                  price: selectedVariant.price,
+                  imageUrl: displayImageUrl,
+                },
+                quantity,
+              );
+              // Keyed on the variant so tapping repeatedly replaces the toast
+              // instead of stacking one per tap.
               toast.success(`Added ${product.name} to cart`, {
-                description: selectedVariant.label,
+                id: `add-${selectedVariant.id}`,
+                description:
+                  quantity > 1
+                    ? `${selectedVariant.label} × ${quantity}`
+                    : selectedVariant.label,
                 duration: 2000,
               });
               track("add_to_cart", {
                 product: product.name,
+                quantity,
                 sawFounderNote:
-                  sessionStorage.getItem("tracked:founder_note_view") ===
-                  "1",
+                  sessionStorage.getItem("tracked:founder_note_view") === "1",
               });
+              setQuantity(1);
             }}
           >
             {isOrderable ? (
@@ -284,6 +387,15 @@ export function ProductCard({
             ) : (
               "Sold Out"
             )}
+            {/* Appended rather than an aria-label so the accessible name still
+                contains the visible text (WCAG 2.5.3). All six buttons on the
+                menu were otherwise named just "Add to Cart", giving a screen
+                reader user no way to tell which product they were on. */}
+            <span className="sr-only">
+              {" "}
+              — {product.name}
+              {selectedVariant ? `, ${selectedVariant.label}` : ""}
+            </span>
           </Button>
         </CardFooter>
       </div>
