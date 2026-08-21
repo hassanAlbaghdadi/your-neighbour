@@ -1,6 +1,5 @@
 import { getProducts } from "@/lib/services/products/get-products";
 import { resolveProductPhotos } from "@/lib/services/products/resolve-product-photos";
-import { getSettings } from "@/lib/services/settings/get-settings";
 import { getHomepagePhotos } from "@/lib/services/homepage/get-homepage-photos";
 import { getStoryPhotos } from "@/lib/services/story/get-story-photos";
 import { StoryHero } from "@/components/story/story-hero";
@@ -9,9 +8,8 @@ import { PullQuote } from "@/components/story/pull-quote";
 import { StoryCta } from "@/components/story/story-cta";
 
 export default async function OurStoryPage() {
-  const [products, settings, homepagePhotos, storyPhotos] = await Promise.all([
+  const [products, homepagePhotos, storyPhotos] = await Promise.all([
     getProducts(),
-    getSettings(),
     getHomepagePhotos(),
     getStoryPhotos(),
   ]);
