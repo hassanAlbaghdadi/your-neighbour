@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude Code checks scratch worktrees out under here. Each one is a
+    // full copy of the repo, so without this every finding is reported
+    // twice -- once for the real file, once for its clone.
+    ".claude/**",
   ]),
 ]);
 
