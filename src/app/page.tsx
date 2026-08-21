@@ -8,7 +8,7 @@ import { getHomepagePhotos } from "@/lib/services/homepage/get-homepage-photos";
 import { MenuGrid } from "@/components/menu/menu-grid";
 import { HeroSection } from "@/components/home/hero-section";
 import { FounderNote } from "@/components/home/founder-note";
-import { StoryFacts } from "@/components/home/story-facts";
+import { OrderingNotice } from "@/components/home/ordering-notice";
 import { PhotoGallery } from "@/components/home/photo-gallery";
 
 export default async function HomePage() {
@@ -39,7 +39,7 @@ export default async function HomePage() {
 
       <FounderNote />
 
-      <StoryFacts minAdvanceHours={settings.minAdvanceHours} />
+      <OrderingNotice minAdvanceHours={settings.minAdvanceHours} />
 
       <section id="menu" className="scroll-mt-16">
         <div className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6">

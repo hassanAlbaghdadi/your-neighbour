@@ -27,8 +27,7 @@ export function FounderNote() {
   return (
     <section ref={ref} className="border-b border-border bg-cream-50">
       <p className="mx-auto max-w-2xl px-4 py-6 text-center font-heading text-base text-espresso-700 sm:px-6">
-        Baked by Sarah in the North End — every order is proofed and baked
-        fresh, never pulled from a shelf.
+        Baked by Sarah in the North End — one small batch at a time.
       </p>
     </section>
   );
