@@ -56,7 +56,20 @@ function VariantSegments({
   return (
     <div
       ref={containerRef}
-      className="relative inline-flex gap-0.5 self-start rounded-md border border-border bg-muted p-0.5"
+      // Fills the card's measure rather than hugging its labels. Hugging
+      // meant the right edge landed wherever the text ended -- 30px from the
+      // card edge on the four-variant products and ~105px on the two-variant
+      // ones -- so the size picker was the only element in the card that
+      // didn't line up with the gutter, and it broke the grid's column
+      // rhythm at exactly the point of interaction. Filling also means long
+      // labels wrap inside their segment instead of overflowing a fixed-width
+      // control and being silently clipped by the card's overflow-hidden.
+      //
+      // The outer border is gone deliberately: card ring, then panel border,
+      // then a bordered pill was three nested rounded rectangles to choose a
+      // size, more chrome than the Add to Cart button below it. The muted
+      // fill alone still reads as a group.
+      className="relative flex w-full gap-0.5 rounded-md bg-muted p-0.5"
     >
       {indicator && (
         <span
@@ -74,13 +87,16 @@ function VariantSegments({
           onClick={() => onSelect(variant.id)}
           aria-pressed={variant.id === selectedId}
           className={cn(
-            // min-w-16 matches "Piece"'s natural width — it exists to stop a
-            // short label like `9"` (42px content) from looking cramped next
-            // to "12 Piece" (83px), not to force every segment equal-width:
-            // longer labels (e.g. "With Fresh Flowers" at 161px) already
-            // exceed it and are left alone, so a 2-option size/style pair
-            // with very different label lengths doesn't get stretched.
-            "relative z-10 flex min-h-11 min-w-16 items-center justify-center rounded-sm px-3.5 text-center text-sm font-medium transition-colors",
+            // basis-0 so every segment takes an equal share of the measure
+            // regardless of label length, and min-w-0 so a long label wraps
+            // inside its own segment rather than forcing the row wider.
+            //
+            // The focus ring is spelled out because these are hand-rolled
+            // buttons, not the shared Button: without it they fell through to
+            // the UA default 1px outline, off-palette and a third the weight
+            // of every other focus state in the app. This is the most-clicked
+            // control on the page.
+            "relative z-10 flex min-h-11 flex-1 basis-0 min-w-0 items-center justify-center rounded-sm px-2 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
             variant.id === selectedId
               ? "font-semibold text-terracotta-700"
               : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
@@ -216,7 +232,7 @@ export function ProductCard({
       {/* Selector and price/CTA are pinned to the bottom as one group, so they
           always sit adjacent to each other regardless of how much (or how
           little) description/allergen text a product has above them. */}
-      <div className="mt-auto flex flex-col gap-2">
+      <div className="mt-auto flex flex-col gap-3">
         {product.variants.length > 1 && (
           <CardContent>
             <VariantSegments
@@ -227,7 +243,11 @@ export function ProductCard({
           </CardContent>
         )}
 
-        <CardFooter className="justify-end gap-3 bg-transparent">
+        {/* justify-between, not justify-end: title, description, allergens
+            and the picker all start on the same left edge, and the footer
+            used to swing hard right and leave ~45% of the row empty. The
+            price now anchors that rail and the CTA holds the right. */}
+        <CardFooter className="items-center justify-between gap-3 bg-transparent">
           <span className="text-lg font-semibold text-foreground tabular-nums">
             {formatPrice(selectedVariant?.price ?? 0)}
           </span>
