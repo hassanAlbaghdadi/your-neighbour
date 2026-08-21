@@ -6,7 +6,6 @@ import { getStoryPhotos } from "@/lib/services/story/get-story-photos";
 import { StoryHero } from "@/components/story/story-hero";
 import { NarrativeBeat } from "@/components/story/narrative-beat";
 import { PullQuote } from "@/components/story/pull-quote";
-import { StoryFacts } from "@/components/home/story-facts";
 import { StoryCta } from "@/components/story/story-cta";
 
 export default async function OurStoryPage() {
@@ -75,8 +74,6 @@ export default async function OurStoryPage() {
         quote="I bake the way I’d bake for my family and friends — like it’s going to someone I actually know. Most days, it is."
         attribution="Sarah, Your Neighbour"
       />
-
-      <StoryFacts minAdvanceHours={settings.minAdvanceHours} />
 
       <StoryCta />
     </div>

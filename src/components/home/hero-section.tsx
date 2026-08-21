@@ -37,10 +37,7 @@ export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
 
       <div className="relative flex h-full items-end">
         <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
-          <p className="text-xs font-semibold tracking-wider text-terracotta-200 uppercase">
-            Small batch · Made to order
-          </p>
-          <h1 className="mt-3 max-w-lg font-heading text-4xl font-semibold text-cream-50 sm:text-5xl">
+          <h1 className="max-w-lg font-heading text-4xl font-semibold text-cream-50 sm:text-5xl">
             Fresh, baked to order
           </h1>
           <p className="mt-4 max-w-md text-base text-cream-50/85 sm:text-lg">

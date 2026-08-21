@@ -5,7 +5,7 @@ interface StoryFactsProps {
 export function StoryFacts({ minAdvanceHours }: StoryFactsProps) {
   const facts = [
     { value: `${minAdvanceHours} hrs`, label: "Advance notice" },
-    { value: "Small batch", label: "Baked to order" },
+    { value: "Small Batch", label: "Baked to order" },
     { value: "Local", label: "Pickup only" },
   ];
 
@@ -14,8 +14,7 @@ export function StoryFacts({ minAdvanceHours }: StoryFactsProps) {
       <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
         <p className="mx-auto max-w-2xl text-center font-heading text-xl font-medium text-foreground sm:text-2xl">
           Nothing sits on a shelf. Every order is mixed, proofed, and baked
-          after it&apos;s placed — then handed to you at pickup, still warm
-          from the oven.
+          after it&apos;s placed — then handed to you at pickup.
         </p>
 
         <dl className="mx-auto mt-10 grid max-w-2xl grid-cols-3 divide-x divide-border border-y border-border">
