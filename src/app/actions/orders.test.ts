@@ -39,6 +39,9 @@ const validPayload = {
   customerName: "Jane Doe",
   customerEmail: "jane@example.com",
   customerPhone: "5551234567",
+  // Inert here -- create-order is mocked below, so this never reaches the
+  // lead-time guard. If that mock ever goes away, pin the clock the way
+  // create-order.test.ts does rather than leaning on a fixed future date.
   pickupDate: "2026-08-20",
   pickupTime: "10:00",
   notes: "",

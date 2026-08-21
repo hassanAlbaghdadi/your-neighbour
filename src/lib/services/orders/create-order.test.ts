@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
 import type { CreateOrderInput } from "@/lib/validations/order";
 
 const rpcMock = vi.fn();
@@ -11,20 +11,36 @@ vi.mock("@/lib/supabase/serviceRole", () => ({
   }),
 }));
 
+const BASE_SETTINGS = {
+  businessName: "Your Neighbour",
+  contactEmail: "owner@example.com",
+  maxOrdersPerDay: 50,
+  minAdvanceHours: 0,
+  pickupTimeSlots: ["10:00"],
+  blackoutDates: [],
+};
+
+const getSettingsMock = vi.fn(async () => BASE_SETTINGS);
+
 vi.mock("@/lib/services/settings/get-settings", () => ({
-  getSettings: vi.fn(async () => ({
-    businessName: "Your Neighbour",
-    contactEmail: "owner@example.com",
-    maxOrdersPerDay: 50,
-    minAdvanceHours: 0,
-    pickupTimeSlots: ["10:00"],
-    blackoutDates: [],
-  })),
+  getSettings: getSettingsMock,
 }));
 
 const { processNewOrder } = await import("./create-order");
 
 const VARIANT_ID = "22222222-2222-4222-8222-222222222222";
+
+// Frozen so the fixed pickupDate below can't drift into the past. The
+// previous fixture was a bare "2026-08-20" written eight days before that
+// date, and every test here that reaches the lead-time guard started
+// failing on 2026-08-21 with a wrong-error message that masked what they
+// were actually asserting.
+//
+// 09:00 Atlantic on the 19th (ADT, UTC-3) -- 25 hours before the 10:00
+// Atlantic pickup on the 20th. Deliberately inside the window where a
+// naive UTC parse of the pickup string disagrees with the business zone:
+// see the 24-hour test below.
+const NOW = new Date("2026-08-19T12:00:00Z");
 
 const baseInput: CreateOrderInput = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -109,9 +125,21 @@ function setupSupabaseMocks({
 }
 
 describe("processNewOrder", () => {
+  beforeAll(() => {
+    // Only Date -- faking timers wholesale would stall the awaited promises
+    // in these tests.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     fromMock.mockReset();
     rpcMock.mockReset();
+    getSettingsMock.mockResolvedValue(BASE_SETTINGS);
   });
 
   it("creates the order and its items via a single atomic RPC call", async () => {
@@ -142,6 +170,31 @@ describe("processNewOrder", () => {
     // The old two-call path (`.from("order_items").insert(...)`) is gone —
     // order_items is never queried as a table directly from this function.
     expect(fromMock).not.toHaveBeenCalledWith("order_items");
+  });
+
+  it("measures the lead time in the bakery's zone, not the host's", async () => {
+    // Regression: the guard used to build the pickup instant with
+    // `new Date(`${date}T${time}:00`)`, which has no offset designator and
+    // so resolved against whatever zone the process ran in. On a UTC host
+    // this slot parsed as 10:00Z instead of 13:00Z (10:00 ADT), landing
+    // 3 hours early and failing a 24-hour rule that it actually satisfies
+    // by 25 hours -- after the checkout calendar, running in the customer's
+    // own zone, had already offered it.
+    setupSupabaseMocks();
+    getSettingsMock.mockResolvedValue({ ...BASE_SETTINGS, minAdvanceHours: 24 });
+
+    await expect(processNewOrder(baseInput)).resolves.toMatchObject({
+      id: baseInput.id,
+    });
+  });
+
+  it("still rejects a slot that genuinely lacks the required notice", async () => {
+    setupSupabaseMocks();
+    getSettingsMock.mockResolvedValue({ ...BASE_SETTINGS, minAdvanceHours: 48 });
+
+    await expect(processNewOrder(baseInput)).rejects.toThrow(
+      "Orders require at least 48 hours notice",
+    );
   });
 
   it("throws instead of returning a partial order when the RPC fails", async () => {
