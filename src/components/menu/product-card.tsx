@@ -25,8 +25,8 @@ function formatAllergenTags(raw: string): string {
     .split(",")
     .map((part) => part.trim().replace(/\s*etc\.?\s*$/i, "").trim())
     .filter((part) => part.length > 0)
-    .map((part) => part.toUpperCase())
-    .join(" · ");
+    .map((part) => part.toLowerCase())
+    .join(", ");
 }
 
 function VariantSegments({
@@ -164,25 +164,48 @@ export function ProductCard({ product }: { product: Product }) {
         )}
       </div>
 
+      {/* No category eyebrow: five of six products sit in the same
+          category, so it repeated down the column in the loudest treatment
+          on the card while telling you nothing about which item to pick.
+          With the filter parked in menu-grid.tsx it has no browsing job
+          left either. The line it frees is spent on the description below,
+          so the card is no taller than before.
+
+          line-clamp-3, not 2: these descriptions share a long opening
+          ("Soft Bread Stuffed w/ Cream Cheese Mix...") and the words that
+          actually distinguish them -- cinnamon icing, dark chocolate, dulce
+          de leche -- sit at the very end. At two lines, three of six were
+          clipped exactly where they became useful. */}
       <CardHeader>
-        {product.category?.name && (
-          <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
-            {product.category.name}
-          </p>
-        )}
-        <CardTitle className="text-lg">{product.name}</CardTitle>
+        {/* Variant-matched, not a bare `text-lg`: CardTitle's own base
+            carries `group-data-[size=sm]/card:text-sm`, and this Card is
+            size="sm". A plain text-lg can't be deduped against a
+            variant-prefixed class by tailwind-merge and loses to it on
+            specificity, so the title had silently been rendering at 14px --
+            the same size as its own description, and smaller than the price.
+            The name is what you scan a menu by; it should win. */}
+        <CardTitle className="group-data-[size=sm]/card:text-lg">
+          {product.name}
+        </CardTitle>
         {product.description && (
-          <CardDescription className="line-clamp-2">
+          <CardDescription className="line-clamp-3">
             {product.description}
           </CardDescription>
         )}
       </CardHeader>
 
+      {/* Demoted from uppercase semibold near-black, which made the least
+          distinguishing text on the card the most visually assertive --
+          every product here contains gluten and dairy, and all but one
+          contain eggs and sesame. It's reference material for the few who
+          need it, not a basis for choosing between items, so it reads as a
+          footnote now. "Contains" is explicit because a bare list gave no
+          clue whether it meant contains or free-of. */}
       {product.allergens && (
         <CardContent>
-          <span className="text-[11px] font-semibold text-espresso-700 uppercase">
-            {formatAllergenTags(product.allergens)}
-          </span>
+          <p className="text-[11px] text-muted-foreground">
+            Contains {formatAllergenTags(product.allergens)}
+          </p>
         </CardContent>
       )}
 
