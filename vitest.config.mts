@@ -8,7 +8,11 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     globals: true,
-    passWithNoTests: true,
+    // false, not the usual true: an empty run is never legitimate here
+    // (`npm test` always sweeps the whole repo), so a glob or alias that
+    // stops matching should fail loudly rather than report a green run
+    // that asserted nothing.
+    passWithNoTests: false,
   },
   resolve: {
     alias: {

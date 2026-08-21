@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
 import type { CreateOrderInput } from "@/lib/validations/order";
+import type { StoreSettings } from "@/lib/services/settings/get-settings";
 
 const rpcMock = vi.fn();
 const fromMock = vi.fn();
@@ -11,7 +12,7 @@ vi.mock("@/lib/supabase/serviceRole", () => ({
   }),
 }));
 
-const BASE_SETTINGS = {
+const BASE_SETTINGS: StoreSettings = {
   businessName: "Your Neighbour",
   contactEmail: "owner@example.com",
   maxOrdersPerDay: 50,
@@ -87,10 +88,14 @@ function setupSupabaseMocks({
     },
     error: null,
   },
+  variantAvailable = true,
+  productAvailable = true,
 }: {
   existingOrder?: unknown;
   existingOrderItems?: unknown[];
   rpcResult?: { data: unknown; error: unknown };
+  variantAvailable?: boolean;
+  productAvailable?: boolean;
 } = {}) {
   fromMock.mockImplementation((table: string) => {
     if (table === "orders") {
@@ -108,11 +113,11 @@ function setupSupabaseMocks({
             id: VARIANT_ID,
             label: "Large",
             price: 8,
-            is_available: true,
+            is_available: variantAvailable,
             product: {
               id: "product-1",
               name: "Sourdough Loaf",
-              is_available: true,
+              is_available: productAvailable,
             },
           },
         ],
@@ -172,6 +177,51 @@ describe("processNewOrder", () => {
     expect(fromMock).not.toHaveBeenCalledWith("order_items");
   });
 
+  it("refuses an order for a variant the owner marked unavailable", async () => {
+    // Nothing else stops this: the cart lives in the customer's
+    // localStorage, so a variant that sold out after it was added -- or a
+    // hand-edited request -- reaches the server looking perfectly valid.
+    // This check is the only gate, and the RPC must never be reached.
+    setupSupabaseMocks({ variantAvailable: false });
+
+    await expect(processNewOrder(baseInput)).rejects.toThrow(
+      "Some items in your cart are no longer available.",
+    );
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses an order for a product the owner marked unavailable", async () => {
+    setupSupabaseMocks({ productAvailable: false });
+
+    await expect(processNewOrder(baseInput)).rejects.toThrow(
+      "Some items in your cart are no longer available.",
+    );
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a pickup time that isn't one of the offered slots", async () => {
+    // The only thing validating pickupTime server-side. The client sends
+    // it, so nothing stops a tampered request naming a time the bakery
+    // never offered -- 03:00 here against a settings list of ["10:00"].
+    setupSupabaseMocks();
+
+    await expect(
+      processNewOrder({ ...baseInput, pickupTime: "03:00" }),
+    ).rejects.toThrow("Selected pickup time is no longer available.");
+  });
+
+  it("refuses a pickup date the owner has blacked out", async () => {
+    setupSupabaseMocks();
+    getSettingsMock.mockResolvedValue({
+      ...BASE_SETTINGS,
+      blackoutDates: [baseInput.pickupDate],
+    });
+
+    await expect(processNewOrder(baseInput)).rejects.toThrow(
+      "We're closed for orders on the selected date.",
+    );
+  });
+
   it("measures the lead time in the bakery's zone, not the host's", async () => {
     // Regression: the guard used to build the pickup instant with
     // `new Date(`${date}T${time}:00`)`, which has no offset designator and
@@ -200,6 +250,25 @@ describe("processNewOrder", () => {
   it("throws instead of returning a partial order when the RPC fails", async () => {
     setupSupabaseMocks({
       rpcResult: { data: null, error: { message: "insert failed" } },
+    });
+
+    await expect(processNewOrder(baseInput)).rejects.toThrow(
+      "Failed to create order",
+    );
+  });
+
+  it("throws when the RPC reports an error even though it returned a row", async () => {
+    // The guard is `if (orderError || !order)`, and the test above only
+    // ever exercises the `!order` half -- deleting the `orderError ||`
+    // limb entirely leaves it green, because its fixture nulls the data
+    // too. This pins the other half: an error alongside a row is exactly
+    // the partial write that must not be handed back to the caller as a
+    // real order, which is what that test's name promises and didn't check.
+    setupSupabaseMocks({
+      rpcResult: {
+        data: { id: baseInput.id },
+        error: { message: "items insert failed after order row" },
+      },
     });
 
     await expect(processNewOrder(baseInput)).rejects.toThrow(
