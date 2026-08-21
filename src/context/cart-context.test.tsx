@@ -92,3 +92,68 @@ describe("CartProvider localStorage validation", () => {
     await waitFor(() => expect(result.current.items[0]?.quantity).toBe(20));
   });
 });
+
+describe("adjustQuantity", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  const item = {
+    productId: "p1",
+    variantId: "v1",
+    name: "Classic",
+    variantLabel: "Piece",
+    slug: "classic",
+    price: 4,
+  };
+
+  it("accumulates when several taps land in one frame", async () => {
+    // The reason this exists. updateQuantity takes an absolute value, so a
+    // stepper written as `updateQuantity(id, current - 1)` reads `current`
+    // from its last render -- batch three taps and all three compute the
+    // same target, so two of them silently do nothing. Steppers are exactly
+    // where people double-tap.
+    const { result } = renderCart();
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    act(() => result.current.addItem(item, 1));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    act(() => {
+      result.current.adjustQuantity("v1", 1);
+      result.current.adjustQuantity("v1", 1);
+      result.current.adjustQuantity("v1", 1);
+    });
+
+    await waitFor(() => expect(result.current.items[0].quantity).toBe(4));
+  });
+
+  it("removes the line when it drops to zero", async () => {
+    const { result } = renderCart();
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    act(() => result.current.addItem(item, 2));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    act(() => {
+      result.current.adjustQuantity("v1", -1);
+      result.current.adjustQuantity("v1", -1);
+    });
+
+    await waitFor(() => expect(result.current.items).toHaveLength(0));
+  });
+
+  it("clamps to MAX_ITEM_QUANTITY and ignores unknown variants", async () => {
+    const { result } = renderCart();
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    act(() => result.current.addItem(item, 1));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    act(() => result.current.adjustQuantity("v1", 999));
+    await waitFor(() => expect(result.current.items[0].quantity).toBe(20));
+
+    act(() => result.current.adjustQuantity("does-not-exist", 1));
+    expect(result.current.items).toHaveLength(1);
+  });
+});

@@ -160,7 +160,7 @@ export function ProductCard({
   /** Stated once above the grid, so it's subtracted from this card's line. */
   sharedAllergens?: string[];
 }) {
-  const { addItem } = useCart();
+  const { items, addItem, adjustQuantity } = useCart();
 
   const firstAvailable = product.variants.find((v) => v.is_available);
   const [selectedVariantId, setSelectedVariantId] = useState(
@@ -169,7 +169,6 @@ export function ProductCard({
   const selectedVariant =
     product.variants.find((v) => v.id === selectedVariantId) ?? product.variants[0];
 
-  const [quantity, setQuantity] = useState(1);
   const isOrderable = product.is_available && selectedVariant?.is_available;
   const displayImageUrl = selectedVariant?.image_url ?? product.image_url;
 
@@ -181,6 +180,14 @@ export function ProductCard({
   // means the non-selected ones are already loaded (still lazy, since
   // they're all in the same on-screen position as the visible one) by the
   // time a size is picked.
+  // How many of *this variant* are already in the cart. Drives the footer
+  // below, and is the only place the menu tells you what you've picked up --
+  // the header badge is in the far corner and the toast is gone in 2s, so on
+  // a menu this long you could add something, scroll back, and find the page
+  // looking exactly as it did before.
+  const inCart =
+    items.find((item) => item.variantId === selectedVariant?.id)?.quantity ?? 0;
+
   const extraAllergens = parseAllergens(product.allergens).filter(
     (token) => !sharedAllergens.includes(token),
   );
@@ -198,7 +205,12 @@ export function ProductCard({
       size="sm"
       className="group pt-0 transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[0_16px_32px_-12px_rgba(42,33,29,0.18),0_4px_10px_-4px_rgba(42,33,29,0.1)]"
     >
-      <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
+      {/* 16:9, not 4:3. At 4:3 the photo was 46% of the card and the card
+          was 69% of a 375x812 screen, so barely one product fit at a time --
+          and four of the six products are the same bread under a different
+          drizzle, so the photo does less to tell them apart than a normal
+          product shot does. */}
+      <div className="relative aspect-video w-full overflow-hidden bg-muted">
         {variantImageUrls.length > 0 ? (
           variantImageUrls.map((url) => (
             <Image
@@ -292,65 +304,68 @@ export function ProductCard({
           </CardContent>
         )}
 
-        {/* Two rows rather than one: a stepper, the price and a legible CTA
-            don't fit on a single line at 320px. Splitting it also lets the
-            primary action run full width. Price stays next to the picker
-            rather than beside the title, since selecting a size is what
-            changes it. */}
-        <CardFooter className="flex-col items-stretch gap-3 bg-transparent">
-          <div className="flex items-center justify-between">
-            <span
-              // The price changes when a size is chosen, and that change was
-              // silent -- the radio announces its own label, this announces
-              // what it now costs.
-              aria-live="polite"
-              aria-atomic="true"
-              className="text-lg font-semibold text-foreground tabular-nums"
-            >
-              {formatPrice(selectedVariant?.price ?? 0)}
-            </span>
+        {/* One row again. The two-row version spent 52px per card on a
+            stepper that opened at 1 and reset to 1 -- permanent real estate
+            for a number the customer hadn't chosen, on a menu that was
+            already 4.6 screens long. The CTA turns into the stepper once
+            there's one in the cart instead: nothing costs height until it's
+            earned, one tap still covers the common case, and the count is
+            visible on the card rather than only in the corner badge. */}
+        <CardFooter className="items-center justify-between gap-3 bg-transparent">
+          <span
+            // Choosing a size changes this, and that change was silent.
+            aria-live="polite"
+            aria-atomic="true"
+            className="text-lg font-semibold text-foreground tabular-nums"
+          >
+            {formatPrice(selectedVariant?.price ?? 0)}
+          </span>
 
-            {/* Same control as the cart drawer's, deliberately. Adding six of
-                something meant six taps and six stacked toasts. */}
+          {isOrderable && inCart > 0 ? (
             <div className="flex items-center gap-1.5">
               <Button
                 variant="outline"
                 size="icon-sm"
-                disabled={!isOrderable || quantity <= 1}
-                onClick={() => setQuantity((n) => Math.max(1, n - 1))}
-                aria-label={`Decrease quantity of ${product.name}`}
+                // adjustQuantity, not updateQuantity(inCart - 1): inCart is
+                // read at render, so two taps in one frame would both target
+                // the same number. It also drops to zero on its own.
+                onClick={() => adjustQuantity(selectedVariant!.id, -1)}
+                aria-label={
+                  inCart <= 1
+                    ? `Remove ${product.name}, ${selectedVariant!.label}, from cart`
+                    : `Decrease ${product.name}, ${selectedVariant!.label}, to ${inCart - 1}`
+                }
               >
                 <Minus />
               </Button>
               <span
                 aria-live="polite"
                 aria-atomic="true"
-                className="w-6 text-center text-sm tabular-nums"
+                className="w-8 text-center text-sm font-medium tabular-nums"
               >
-                {quantity}
+                {inCart}
+                <span className="sr-only">
+                  {" "}
+                  in cart — {product.name}, {selectedVariant!.label}
+                </span>
               </span>
               <Button
                 variant="outline"
                 size="icon-sm"
-                disabled={!isOrderable || quantity >= MAX_ITEM_QUANTITY}
-                onClick={() =>
-                  setQuantity((n) => Math.min(MAX_ITEM_QUANTITY, n + 1))
-                }
-                aria-label={`Increase quantity of ${product.name}`}
+                disabled={inCart >= MAX_ITEM_QUANTITY}
+                onClick={() => adjustQuantity(selectedVariant!.id, 1)}
+                aria-label={`Increase ${product.name}, ${selectedVariant!.label}, to ${inCart + 1}`}
               >
                 <Plus />
               </Button>
             </div>
-          </div>
-
-          <Button
-            variant={isOrderable ? "default" : "secondary"}
-            disabled={!isOrderable || !selectedVariant}
-            className="w-full"
-            onClick={() => {
-              if (!selectedVariant) return;
-              addItem(
-                {
+          ) : (
+            <Button
+              variant={isOrderable ? "default" : "secondary"}
+              disabled={!isOrderable || !selectedVariant}
+              onClick={() => {
+                if (!selectedVariant) return;
+                addItem({
                   productId: product.id,
                   variantId: selectedVariant.id,
                   name: product.name,
@@ -358,45 +373,37 @@ export function ProductCard({
                   slug: product.slug,
                   price: selectedVariant.price,
                   imageUrl: displayImageUrl,
-                },
-                quantity,
-              );
-              // Keyed on the variant so tapping repeatedly replaces the toast
-              // instead of stacking one per tap.
-              toast.success(`Added ${product.name} to cart`, {
-                id: `add-${selectedVariant.id}`,
-                description:
-                  quantity > 1
-                    ? `${selectedVariant.label} × ${quantity}`
-                    : selectedVariant.label,
-                duration: 2000,
-              });
-              track("add_to_cart", {
-                product: product.name,
-                quantity,
-                sawFounderNote:
-                  sessionStorage.getItem("tracked:founder_note_view") === "1",
-              });
-              setQuantity(1);
-            }}
-          >
-            {isOrderable ? (
-              <>
-                <Plus /> Add to Cart
-              </>
-            ) : (
-              "Sold Out"
-            )}
-            {/* Appended rather than an aria-label so the accessible name still
-                contains the visible text (WCAG 2.5.3). All six buttons on the
-                menu were otherwise named just "Add to Cart", giving a screen
-                reader user no way to tell which product they were on. */}
-            <span className="sr-only">
-              {" "}
-              — {product.name}
-              {selectedVariant ? `, ${selectedVariant.label}` : ""}
-            </span>
-          </Button>
+                });
+                // Only on the first add. Once the stepper is showing, the
+                // number is the feedback and a toast on top of it is noise.
+                toast.success(`Added ${product.name} to cart`, {
+                  id: `add-${selectedVariant.id}`,
+                  description: selectedVariant.label,
+                  duration: 2000,
+                });
+                track("add_to_cart", {
+                  product: product.name,
+                  sawFounderNote:
+                    sessionStorage.getItem("tracked:founder_note_view") === "1",
+                });
+              }}
+            >
+              {isOrderable ? (
+                <>
+                  <Plus /> Add to Cart
+                </>
+              ) : (
+                "Sold Out"
+              )}
+              {/* Appended rather than an aria-label so the accessible name
+                  still contains the visible text (WCAG 2.5.3). */}
+              <span className="sr-only">
+                {" "}
+                — {product.name}
+                {selectedVariant ? `, ${selectedVariant.label}` : ""}
+              </span>
+            </Button>
+          )}
         </CardFooter>
       </div>
     </Card>

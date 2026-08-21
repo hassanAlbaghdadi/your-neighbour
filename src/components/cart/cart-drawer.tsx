@@ -27,7 +27,7 @@ export function CartDrawer({
   onOpenChange,
   minAdvanceHours,
 }: CartDrawerProps) {
-  const { items, subtotal, updateQuantity, removeItem } = useCart();
+  const { items, subtotal, adjustQuantity, removeItem } = useCart();
 
   useEffect(() => {
     if (open) toast.dismiss();
@@ -64,9 +64,7 @@ export function CartDrawer({
                     <Button
                       variant="outline"
                       size="icon-sm"
-                      onClick={() =>
-                        updateQuantity(item.variantId, item.quantity - 1)
-                      }
+                      onClick={() => adjustQuantity(item.variantId, -1)}
                       aria-label={`Decrease quantity of ${item.name}`}
                     >
                       <Minus />
@@ -78,9 +76,7 @@ export function CartDrawer({
                       variant="outline"
                       size="icon-sm"
                       disabled={item.quantity >= MAX_ITEM_QUANTITY}
-                      onClick={() =>
-                        updateQuantity(item.variantId, item.quantity + 1)
-                      }
+                      onClick={() => adjustQuantity(item.variantId, 1)}
                       aria-label={`Increase quantity of ${item.name}`}
                     >
                       <Plus />

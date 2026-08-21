@@ -27,6 +27,7 @@ interface CartContextValue {
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
+  adjustQuantity: (variantId: string, delta: number) => void;
   clearCart: () => void;
 }
 
@@ -99,6 +100,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  /**
+   * Relative change, resolved inside the updater. `updateQuantity` takes an
+   * absolute value, so a caller writing `updateQuantity(id, current - 1)`
+   * reads `current` from its last render -- two taps landing in the same
+   * frame both compute the same target and the second silently does nothing.
+   * Steppers are exactly where double-taps happen.
+   */
+  function adjustQuantity(variantId: string, delta: number) {
+    setItems((current) => {
+      const existing = current.find((i) => i.variantId === variantId);
+      if (!existing) return current;
+      const next = existing.quantity + delta;
+      if (next <= 0) return current.filter((i) => i.variantId !== variantId);
+      return current.map((i) =>
+        i.variantId === variantId
+          ? { ...i, quantity: Math.min(next, MAX_ITEM_QUANTITY) }
+          : i,
+      );
+    });
+  }
+
   function clearCart() {
     setItems([]);
   }
@@ -120,6 +142,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     addItem,
     removeItem,
     updateQuantity,
+    adjustQuantity,
     clearCart,
   };
 
