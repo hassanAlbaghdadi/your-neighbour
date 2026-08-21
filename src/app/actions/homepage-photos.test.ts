@@ -17,9 +17,18 @@ vi.mock("@/lib/services/homepage/manage-homepage-photos", () => ({
   HomepagePhotoError: class HomepagePhotoError extends Error {},
 }));
 
-const { addGalleryPhotoAction, setHeroPhotoAction } = await import(
-  "./homepage-photos"
+const {
+  setHeroPhotoAction,
+  clearHeroPhotoAction,
+  addGalleryPhotoAction,
+  updateGalleryPhotoAltAction,
+  deleteGalleryPhotoAction,
+  reorderGalleryPhotosAction,
+} = await import("./homepage-photos");
+const managePhotos = await import(
+  "@/lib/services/homepage/manage-homepage-photos"
 );
+const { requireAdmin } = await import("@/lib/auth/require-admin");
 
 describe("addGalleryPhotoAction", () => {
   beforeEach(() => {
@@ -55,4 +64,33 @@ describe("setHeroPhotoAction", () => {
     );
     expect(result).toEqual({ success: true });
   });
+});
+
+describe("authorization", () => {
+  // See the note in products.test.ts -- same gate, same blind spot. All six
+  // of these mutate what the storefront homepage shows.
+  const actions: Array<[string, () => Promise<unknown>]> = [
+    ["setHeroPhotoAction", () => setHeroPhotoAction("https://example.com/a.jpg", "Hero")],
+    ["clearHeroPhotoAction", () => clearHeroPhotoAction()],
+    ["addGalleryPhotoAction", () => addGalleryPhotoAction("https://example.com/a.jpg", "Alt", 0)],
+    ["updateGalleryPhotoAltAction", () => updateGalleryPhotoAltAction("photo-1", "Alt")],
+    ["deleteGalleryPhotoAction", () => deleteGalleryPhotoAction("photo-1")],
+    ["reorderGalleryPhotosAction", () => reorderGalleryPhotosAction(["photo-1", "photo-2"])],
+  ];
+
+  for (const [name, invoke] of actions) {
+    it(`${name} refuses a signed-out caller`, async () => {
+      vi.clearAllMocks();
+      vi.mocked(requireAdmin).mockResolvedValueOnce(null);
+
+      await expect(invoke()).resolves.toEqual({
+        success: false,
+        error: "Unauthorized",
+      });
+
+      for (const exported of Object.values(managePhotos)) {
+        if (vi.isMockFunction(exported)) expect(exported).not.toHaveBeenCalled();
+      }
+    });
+  }
 });

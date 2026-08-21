@@ -13,7 +13,15 @@ vi.mock("@/lib/services/products/manage-products", () => ({
   ProductError: class ProductError extends Error {},
 }));
 
-const { createProductAction } = await import("./products");
+const {
+  createProductAction,
+  updateProductAction,
+  deleteProductAction,
+  setProductAvailabilityAction,
+  setVariantAvailabilityAction,
+} = await import("./products");
+const manageProducts = await import("@/lib/services/products/manage-products");
+const { requireAdmin } = await import("@/lib/auth/require-admin");
 
 const validPayload = {
   name: "Sourdough Loaf",
@@ -51,4 +59,34 @@ describe("createProductAction", () => {
     expect(result.success).toBe(false);
     expect(typeof result.error).toBe("string");
   });
+});
+
+describe("authorization", () => {
+  // Every action in this file opens with `if (!(await requireAdmin()))`, and
+  // every other test here mocks requireAdmin to hand back an admin -- so
+  // deleting that line from any of them left the whole suite green. These
+  // pin the signed-out path: refuse, and never reach the service layer.
+  const actions: Array<[string, () => Promise<unknown>]> = [
+    ["createProductAction", () => createProductAction(validPayload)],
+    ["updateProductAction", () => updateProductAction("product-1", validPayload)],
+    ["deleteProductAction", () => deleteProductAction("product-1")],
+    ["setProductAvailabilityAction", () => setProductAvailabilityAction("product-1", false)],
+    ["setVariantAvailabilityAction", () => setVariantAvailabilityAction("variant-1", false)],
+  ];
+
+  for (const [name, invoke] of actions) {
+    it(`${name} refuses a signed-out caller`, async () => {
+      vi.clearAllMocks();
+      vi.mocked(requireAdmin).mockResolvedValueOnce(null);
+
+      await expect(invoke()).resolves.toEqual({
+        success: false,
+        error: "Unauthorized",
+      });
+
+      for (const exported of Object.values(manageProducts)) {
+        if (vi.isMockFunction(exported)) expect(exported).not.toHaveBeenCalled();
+      }
+    });
+  }
 });

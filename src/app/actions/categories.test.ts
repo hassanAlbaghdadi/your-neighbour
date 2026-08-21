@@ -11,7 +11,13 @@ vi.mock("@/lib/services/categories/manage-categories", () => ({
   CategoryError: class CategoryError extends Error {},
 }));
 
-const { createCategoryAction } = await import("./categories");
+const {
+  createCategoryAction,
+  updateCategoryAction,
+  deleteCategoryAction,
+} = await import("./categories");
+const manageCategories = await import("@/lib/services/categories/manage-categories");
+const { requireAdmin } = await import("@/lib/auth/require-admin");
 
 describe("createCategoryAction", () => {
   beforeEach(() => {
@@ -36,4 +42,29 @@ describe("createCategoryAction", () => {
     expect(result.success).toBe(false);
     expect(typeof result.error).toBe("string");
   });
+});
+
+describe("authorization", () => {
+  // See the note in products.test.ts -- same gate, same blind spot.
+  const actions: Array<[string, () => Promise<unknown>]> = [
+    ["createCategoryAction", () => createCategoryAction({ name: "Breads", displayOrder: 0 })],
+    ["updateCategoryAction", () => updateCategoryAction("category-1", { name: "Breads", displayOrder: 0 })],
+    ["deleteCategoryAction", () => deleteCategoryAction("category-1")],
+  ];
+
+  for (const [name, invoke] of actions) {
+    it(`${name} refuses a signed-out caller`, async () => {
+      vi.clearAllMocks();
+      vi.mocked(requireAdmin).mockResolvedValueOnce(null);
+
+      await expect(invoke()).resolves.toEqual({
+        success: false,
+        error: "Unauthorized",
+      });
+
+      for (const exported of Object.values(manageCategories)) {
+        if (vi.isMockFunction(exported)) expect(exported).not.toHaveBeenCalled();
+      }
+    });
+  }
 });

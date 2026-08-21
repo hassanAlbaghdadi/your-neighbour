@@ -32,7 +32,10 @@ vi.mock("@/lib/services/rate-limit/check-rate-limit", () => ({
   getClientIp: async () => "203.0.113.7",
 }));
 
-const { createOrderAction } = await import("./orders");
+const { createOrderAction, updateOrderStatusAction } = await import("./orders");
+const { updateOrderStatus } = await import(
+  "@/lib/services/orders/update-order-status"
+);
 
 const validPayload = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -131,5 +134,32 @@ describe("createOrderAction", () => {
     expect(result.success).toBe(false);
     expect(typeof result.error).toBe("string");
     expect(processNewOrderMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateOrderStatusAction authorization", () => {
+  // This one gates on supabase.auth.getUser() directly rather than
+  // requireAdmin, and nothing covered the signed-out branch -- deleting
+  // `if (!user)` left the suite green, which would make any order's status
+  // writable by an anonymous caller.
+  it("refuses a signed-out caller and never touches the order", async () => {
+    vi.clearAllMocks();
+    getUserMock.mockResolvedValue({ data: { user: null } });
+
+    await expect(updateOrderStatusAction("order-1", "Ready")).resolves.toEqual({
+      success: false,
+      error: "Unauthorized",
+    });
+    expect(updateOrderStatus).not.toHaveBeenCalled();
+  });
+
+  it("lets a signed-in admin through", async () => {
+    vi.clearAllMocks();
+    getUserMock.mockResolvedValue({ data: { user: { id: "admin-1" } } });
+
+    await expect(updateOrderStatusAction("order-1", "Ready")).resolves.toEqual({
+      success: true,
+    });
+    expect(updateOrderStatus).toHaveBeenCalledWith("order-1", "Ready");
   });
 });
