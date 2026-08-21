@@ -19,9 +19,14 @@ import { formatPrice } from "@/lib/utils";
 interface CartDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  minAdvanceHours: number;
 }
 
-export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
+export function CartDrawer({
+  open,
+  onOpenChange,
+  minAdvanceHours,
+}: CartDrawerProps) {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
 
   useEffect(() => {
@@ -97,6 +102,16 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
 
         {items.length > 0 && (
           <SheetFooter className="border-t border-border">
+            {/* Lead time was stated once on the homepage and then nowhere
+                else until create-order rejected the order outright. Someone
+                could fill a cart, reach checkout and only there discover
+                they can't have it when they need it -- so it belongs at the
+                point the cart is committed, not just on a page they may
+                never have scrolled through. */}
+            <p className="text-xs text-muted-foreground">
+              Pickup only — orders need {minAdvanceHours} hours’ notice.
+              You’ll pick a day and time next.
+            </p>
             <div className="flex items-center justify-between text-base font-medium text-foreground">
               <span>Subtotal</span>
               <span>{formatPrice(subtotal)}</span>

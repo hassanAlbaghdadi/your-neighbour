@@ -39,7 +39,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         <CartProvider>
-          <SiteHeader />
+          <SiteHeader minAdvanceHours={settings.minAdvanceHours} />
           <main className="flex flex-1 flex-col">{children}</main>
           <SiteFooter
             businessName={settings.businessName}

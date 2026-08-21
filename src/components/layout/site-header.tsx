@@ -18,7 +18,11 @@ import { scrollToAnchor } from "@/lib/utils";
 import { track, trackOnce } from "@/lib/analytics";
 import { INSTAGRAM_URL } from "@/lib/social";
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+  minAdvanceHours: number;
+}
+
+export function SiteHeader({ minAdvanceHours }: SiteHeaderProps) {
   const { itemCount } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -185,7 +189,11 @@ export function SiteHeader() {
         </SheetContent>
       </Sheet>
 
-      <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
+      <CartDrawer
+        open={cartOpen}
+        onOpenChange={setCartOpen}
+        minAdvanceHours={minAdvanceHours}
+      />
     </>
   );
 }
