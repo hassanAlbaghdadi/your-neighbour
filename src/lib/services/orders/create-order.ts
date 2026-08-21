@@ -98,13 +98,29 @@ export async function processNewOrder(
       product: { id: string; name: string; is_available: boolean } | null;
     }>).map((variant) => [variant.id, variant]),
   );
-  for (const item of input.items) {
+  // Named, not "some items". The cart lives in localStorage with no expiry,
+  // so the common way to reach this isn't a race -- it's someone returning
+  // days later to a cart the menu has moved on from. "Some items in your
+  // cart are no longer available" left them on a filled-in checkout form
+  // with no way to tell which item to remove. We already have the names
+  // right here.
+  const unavailable = input.items.flatMap((item) => {
     const variant = variantMap.get(item.variantId);
-    if (!variant || !variant.product || !variant.product.is_available || !variant.is_available) {
-      throw new OrderError(
-        "Some items in your cart are no longer available.",
-      );
-    }
+    if (variant?.product?.is_available && variant.is_available) return [];
+    return [
+      variant?.product
+        ? `${variant.product.name} (${variant.label})`
+        : "an item that has since been removed",
+    ];
+  });
+  if (unavailable.length > 0) {
+    const list =
+      unavailable.length === 1
+        ? unavailable[0]
+        : `${unavailable.slice(0, -1).join(", ")} and ${unavailable[unavailable.length - 1]}`;
+    throw new OrderError(
+      `${list} ${unavailable.length === 1 ? "is" : "are"} no longer available. Please remove ${unavailable.length === 1 ? "it" : "them"} from your cart and try again.`,
+    );
   }
 
   const orderItems = input.items.map((item) => {

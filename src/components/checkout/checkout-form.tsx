@@ -317,7 +317,16 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
 
         <Field>
           <FieldLabel htmlFor="customerName">Full name</FieldLabel>
-          <Input id="customerName" {...register("customerName")} />
+          {/* autoComplete matters more here than anywhere else in the app: this
+              is the only form a customer fills, it's mostly filled on a phone,
+              and without these three attributes the browser can't offer to
+              autofill any of it. It's also WCAG 1.3.5 (Identify Input
+              Purpose), which is a AA criterion. */}
+          <Input
+            id="customerName"
+            autoComplete="name"
+            {...register("customerName")}
+          />
           <FieldError errors={[errors.customerName]} />
         </Field>
 
@@ -326,6 +335,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
           <Input
             id="customerEmail"
             type="email"
+            autoComplete="email"
             {...register("customerEmail")}
           />
           <FieldError errors={[errors.customerEmail]} />
@@ -333,7 +343,12 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
 
         <Field>
           <FieldLabel htmlFor="customerPhone">Phone</FieldLabel>
-          <Input id="customerPhone" type="tel" {...register("customerPhone")} />
+          <Input
+            id="customerPhone"
+            type="tel"
+            autoComplete="tel"
+            {...register("customerPhone")}
+          />
           <FieldError errors={[errors.customerPhone]} />
         </Field>
 

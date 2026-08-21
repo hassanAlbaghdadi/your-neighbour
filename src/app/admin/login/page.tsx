@@ -54,13 +54,23 @@ export default function AdminLoginPage() {
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
-            <Input id="email" type="email" {...register("email")} />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              {...register("email")}
+            />
             <FieldError errors={[errors.email]} />
           </Field>
 
           <Field>
             <FieldLabel htmlFor="password">Password</FieldLabel>
-            <Input id="password" type="password" {...register("password")} />
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              {...register("password")}
+            />
             <FieldError errors={[errors.password]} />
           </Field>
 

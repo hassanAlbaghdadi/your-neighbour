@@ -184,8 +184,11 @@ describe("processNewOrder", () => {
     // This check is the only gate, and the RPC must never be reached.
     setupSupabaseMocks({ variantAvailable: false });
 
+    // Names the item. The cart never expires, so the usual way to hit this
+    // is a stale cart rather than a race -- "some items" left the customer
+    // on a filled-in form with no idea which one to remove.
     await expect(processNewOrder(baseInput)).rejects.toThrow(
-      "Some items in your cart are no longer available.",
+      "Sourdough Loaf (Large) is no longer available",
     );
     expect(rpcMock).not.toHaveBeenCalled();
   });
@@ -194,8 +197,22 @@ describe("processNewOrder", () => {
     setupSupabaseMocks({ productAvailable: false });
 
     await expect(processNewOrder(baseInput)).rejects.toThrow(
-      "Some items in your cart are no longer available.",
+      "Sourdough Loaf (Large) is no longer available",
     );
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("names a variant that has vanished from the catalogue entirely", async () => {
+    // No row comes back for it, so there's no name to give -- the message
+    // still has to be answerable rather than blaming the whole cart.
+    setupSupabaseMocks();
+
+    await expect(
+      processNewOrder({
+        ...baseInput,
+        items: [{ variantId: "33333333-3333-4333-8333-333333333333", quantity: 1 }],
+      }),
+    ).rejects.toThrow("an item that has since been removed is no longer available");
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
