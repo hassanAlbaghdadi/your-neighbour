@@ -205,12 +205,12 @@ export function ProductCard({
       size="sm"
       className="group pt-0 transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[0_16px_32px_-12px_rgba(42,33,29,0.18),0_4px_10px_-4px_rgba(42,33,29,0.1)]"
     >
-      {/* 16:9, not 4:3. At 4:3 the photo was 46% of the card and the card
-          was 69% of a 375x812 screen, so barely one product fit at a time --
-          and four of the six products are the same bread under a different
-          drizzle, so the photo does less to tell them apart than a normal
-          product shot does. */}
-      <div className="relative aspect-video w-full overflow-hidden bg-muted">
+      {/* 4:3 by choice, not by default. It was briefly 16:9 to buy height
+          back, but the photography is the reason anyone wants these -- and
+          since four of the six products are the same bread under a different
+          drizzle, the detail that tells them apart lives in the picture. The
+          height came out of the footer instead. */}
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
         {variantImageUrls.length > 0 ? (
           variantImageUrls.map((url) => (
             <Image
