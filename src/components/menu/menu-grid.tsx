@@ -10,6 +10,8 @@ import type { Category, Product } from "@/lib/services/products/get-products";
 interface MenuGridProps {
   categories: Category[];
   products: Product[];
+  /** Derived from real order history; null when there's no defensible winner. */
+  mostPopularId: string | null;
 }
 
 /**
@@ -24,7 +26,11 @@ interface MenuGridProps {
  */
 const SHOW_CATEGORY_FILTER = false;
 
-export function MenuGrid({ categories, products }: MenuGridProps) {
+export function MenuGrid({
+  categories,
+  products,
+  mostPopularId,
+}: MenuGridProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +105,7 @@ export function MenuGrid({ categories, products }: MenuGridProps) {
               key={product.id}
               product={product}
               sharedAllergens={shared}
+              isMostPopular={product.id === mostPopularId}
             />
           ))}
         </div>

@@ -155,10 +155,17 @@ function VariantSegments({
 export function ProductCard({
   product,
   sharedAllergens = [],
+  isMostPopular = false,
 }: {
   product: Product;
   /** Stated once above the grid, so it's subtracted from this card's line. */
   sharedAllergens?: string[];
+  /**
+   * Computed from order history in get-popular-product.ts, never set by
+   * hand. The badge states a fact about what customers chose, so it has to
+   * come from what they actually chose.
+   */
+  isMostPopular?: boolean;
 }) {
   const { items, addItem, adjustQuantity } = useCart();
 
@@ -236,11 +243,18 @@ export function ProductCard({
             <span className="text-xs">No photo yet</span>
           </div>
         )}
-        {!isOrderable && (
+        {/* One badge, one corner. Sold Out wins when both apply: that a
+            thing is popular stops mattering the moment you can't have it,
+            and stacking two badges in the same corner would overlap them. */}
+        {!isOrderable ? (
           <Badge className="absolute top-3 left-3 bg-espresso-900 text-cream-50">
             Sold Out
           </Badge>
-        )}
+        ) : isMostPopular ? (
+          <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">
+            Most popular
+          </Badge>
+        ) : null}
       </div>
 
       {/* No category eyebrow: five of six products sit in the same

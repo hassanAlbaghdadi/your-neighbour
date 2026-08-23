@@ -3,6 +3,7 @@ import {
   getProducts,
 } from "@/lib/services/products/get-products";
 import { resolveProductPhotos } from "@/lib/services/products/resolve-product-photos";
+import { getMostPopularProductId } from "@/lib/services/products/get-popular-product";
 import { getSettings } from "@/lib/services/settings/get-settings";
 import { getHomepagePhotos } from "@/lib/services/homepage/get-homepage-photos";
 import { MenuGrid } from "@/components/menu/menu-grid";
@@ -12,12 +13,14 @@ import { OrderingNotice } from "@/components/home/ordering-notice";
 import { PhotoGallery } from "@/components/home/photo-gallery";
 
 export default async function HomePage() {
-  const [categories, products, settings, homepagePhotos] = await Promise.all([
-    getCategories(),
-    getProducts(),
-    getSettings(),
-    getHomepagePhotos(),
-  ]);
+  const [categories, products, settings, homepagePhotos, mostPopularId] =
+    await Promise.all([
+      getCategories(),
+      getProducts(),
+      getSettings(),
+      getHomepagePhotos(),
+      getMostPopularProductId(),
+    ]);
 
   const [autoHeroPhoto, ...autoGalleryPhotos] = resolveProductPhotos(products);
 
@@ -75,7 +78,11 @@ export default async function HomePage() {
             A 9″ pan serves about 5; the boxes come as 12 or 24 pieces.
           </p>
         </div>
-        <MenuGrid categories={categories} products={products} />
+        <MenuGrid
+          categories={categories}
+          products={products}
+          mostPopularId={mostPopularId}
+        />
       </section>
 
       <PhotoGallery photos={galleryPhotos} />
