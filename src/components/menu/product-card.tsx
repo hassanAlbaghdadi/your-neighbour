@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ImageOff, Minus, Plus } from "lucide-react";
+import { ImageOff, Minus, Plus, Star } from "lucide-react";
 import { toast } from "sonner";
 import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
@@ -251,7 +251,18 @@ export function ProductCard({
             Sold Out
           </Badge>
         ) : isMostPopular ? (
-          <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">
+          // Echoes the uppercase/tracking-wider eyebrow the section headers
+          // already use ("Order ahead", "Before you order"), so it reads as
+          // part of this shop rather than a generic store-badge pill. The
+          // star does the work at a glance -- the words confirm it.
+          //
+          // h-auto overrides the component's fixed h-5, which clipped the
+          // uppercase ascenders once padding was added. The drop shadow is
+          // not decoration: these sit on admin-uploaded photography that
+          // ranges from near-black pans to white plates, and a flat pill
+          // dissolves into the light ones.
+          <Badge className="absolute top-3 left-3 h-auto gap-1.5 border-0 bg-primary px-2.5 py-1 text-[11px] font-semibold tracking-wider text-primary-foreground uppercase shadow-[0_2px_10px_-2px_rgba(42,33,29,0.55)]">
+            <Star className="fill-current" />
             Most popular
           </Badge>
         ) : null}
