@@ -19,8 +19,8 @@ export async function notifyPaymentFailed(orderId: string): Promise<void> {
   await notifyOnce(orderId, (order, settings) =>
     sendPaymentFailedNotification(
       order,
-      settings.contactEmail,
       settings.businessName,
+      settings.contactEmail,
     ),
   );
 }

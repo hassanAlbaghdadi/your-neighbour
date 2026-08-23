@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const fromMock = vi.fn();
 const getOrderByIdMock = vi.fn();
 const getSettingsMock = vi.fn();
-const sendOrderNotificationsMock = vi.fn();
+const sendOwnerAlertMock = vi.fn();
+const sendCustomerReceiptMock = vi.fn();
 
 vi.mock("@/lib/supabase/serviceRole", () => ({
   createServiceRoleClient: () => ({ from: fromMock }),
@@ -15,7 +16,8 @@ vi.mock("@/lib/services/settings/get-settings", () => ({
   getSettings: (...args: unknown[]) => getSettingsMock(...args),
 }));
 vi.mock("@/lib/email/resend", () => ({
-  sendOrderNotifications: (...args: unknown[]) => sendOrderNotificationsMock(...args),
+  sendOwnerAlert: (...args: unknown[]) => sendOwnerAlertMock(...args),
+  sendCustomerReceipt: (...args: unknown[]) => sendCustomerReceiptMock(...args),
 }));
 
 const { markOrderPaid } = await import("./mark-order-paid");
@@ -80,9 +82,11 @@ describe("markOrderPaid", () => {
     fromMock.mockReset();
     getOrderByIdMock.mockReset();
     getSettingsMock.mockReset();
-    sendOrderNotificationsMock.mockReset();
+    sendOwnerAlertMock.mockReset();
+    sendCustomerReceiptMock.mockReset();
     getOrderByIdMock.mockResolvedValue(ORDER);
-    sendOrderNotificationsMock.mockResolvedValue(undefined);
+    sendOwnerAlertMock.mockResolvedValue(undefined);
+    sendCustomerReceiptMock.mockResolvedValue(undefined);
     getSettingsMock.mockResolvedValue({
       businessName: "Your Neighbour",
       contactEmail: "owner@example.com",
@@ -103,10 +107,11 @@ describe("markOrderPaid", () => {
 
     expect(flip.payload).toEqual({ payment_status: "paid" });
     expect(claim.payload).toMatchObject({ notified_at: expect.any(String) });
-    expect(sendOrderNotificationsMock).toHaveBeenCalledWith(
+    expect(sendOwnerAlertMock).toHaveBeenCalledWith(ORDER, "owner@example.com");
+    expect(sendCustomerReceiptMock).toHaveBeenCalledWith(
       ORDER,
-      "owner@example.com",
       "Your Neighbour",
+      "owner@example.com",
     );
   });
 
@@ -124,7 +129,8 @@ describe("markOrderPaid", () => {
     await markOrderPaid(ORDER_ID);
 
     expect(claim.payload).toMatchObject({ notified_at: expect.any(String) });
-    expect(sendOrderNotificationsMock).toHaveBeenCalledTimes(1);
+    expect(sendOwnerAlertMock).toHaveBeenCalledTimes(1);
+    expect(sendCustomerReceiptMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not send duplicate emails when an earlier delivery already sent them", async () => {
@@ -134,16 +140,17 @@ describe("markOrderPaid", () => {
     await markOrderPaid(ORDER_ID);
 
     expect(getOrderByIdMock).not.toHaveBeenCalled();
-    expect(sendOrderNotificationsMock).not.toHaveBeenCalled();
+    expect(sendOwnerAlertMock).not.toHaveBeenCalled();
+    expect(sendCustomerReceiptMock).not.toHaveBeenCalled();
   });
 
-  it("releases the lease and rethrows when the email send fails, so Stripe retries", async () => {
+  it("releases the lease and rethrows when the owner alert fails, so Stripe retries", async () => {
     const [, , release] = queueBuilders(
       { error: null },
       { data: { id: ORDER_ID }, error: null },
       { error: null },
     );
-    sendOrderNotificationsMock.mockRejectedValue(new Error("resend down"));
+    sendOwnerAlertMock.mockRejectedValue(new Error("resend down"));
 
     await expect(markOrderPaid(ORDER_ID)).rejects.toThrow("resend down");
 
@@ -152,10 +159,39 @@ describe("markOrderPaid", () => {
     expect(release.payload).toEqual({ notified_at: null });
   });
 
+  it("still sends the owner alert when the customer receipt fails", async () => {
+    // The bug this split exists for. The two sends shared one Promise.all,
+    // so a customer receipt that always fails — which is exactly what an
+    // unverified sending domain produces — discarded the bake list too.
+    queueBuilders({ error: null }, { data: { id: ORDER_ID }, error: null });
+    sendCustomerReceiptMock.mockRejectedValue(new Error("domain not verified"));
+
+    await markOrderPaid(ORDER_ID);
+
+    expect(sendOwnerAlertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the lease when only the customer receipt fails, so the owner isn't re-alerted", async () => {
+    // A permanently failing receipt must not put Stripe into a retry loop
+    // that mails the baker the same order over and over.
+    const builders = queueBuilders(
+      { error: null },
+      { data: { id: ORDER_ID }, error: null },
+      { error: null },
+    );
+    sendCustomerReceiptMock.mockRejectedValue(new Error("domain not verified"));
+
+    await expect(markOrderPaid(ORDER_ID)).resolves.toBeUndefined();
+
+    // Only the flip and the claim ran; no third call released the lease.
+    expect(builders[2].payload).toBeNull();
+  });
+
   it("throws when the payment flip fails", async () => {
     queueBuilders({ error: { message: "db down" } });
 
     await expect(markOrderPaid(ORDER_ID)).rejects.toThrow("db down");
-    expect(sendOrderNotificationsMock).not.toHaveBeenCalled();
+    expect(sendOwnerAlertMock).not.toHaveBeenCalled();
+    expect(sendCustomerReceiptMock).not.toHaveBeenCalled();
   });
 });

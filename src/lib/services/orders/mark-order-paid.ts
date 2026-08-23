@@ -1,6 +1,6 @@
 import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
-import { sendOrderNotifications } from "@/lib/email/resend";
+import { sendCustomerReceipt, sendOwnerAlert } from "@/lib/email/resend";
 import { notifyOnce } from "@/lib/services/orders/notification-lease";
 
 /**
@@ -33,7 +33,36 @@ export async function markOrderPaid(orderId: string): Promise<void> {
     throw new Error(`Failed to mark order ${orderId} as paid: ${error.message}`);
   }
 
-  await notifyOnce(orderId, (order, settings) =>
-    sendOrderNotifications(order, settings.contactEmail, settings.businessName),
-  );
+  await notifyOnce(orderId, async (order, settings) => {
+    // allSettled, not all: these used to share one Promise.all, so a
+    // failure on either discarded both — and the customer receipt is the
+    // one that fails, because it goes to an arbitrary address. That took
+    // the bake list down with it on every order. Both are attempted
+    // unconditionally now.
+    const [owner, customer] = await Promise.allSettled([
+      sendOwnerAlert(order, settings.contactEmail),
+      sendCustomerReceipt(order, settings.businessName, settings.contactEmail),
+    ]);
+
+    if (customer.status === "rejected") {
+      // Logged, not rethrown, and the asymmetry is deliberate. Rethrowing
+      // would release the lease and have Stripe redeliver, which re-sends
+      // the owner alert that already succeeded — so a permanently failing
+      // receipt (an unverified sending domain, a dead customer address)
+      // would mail the baker the same order over and over for as long as
+      // Stripe retries. A lost receipt is recoverable: the customer has
+      // the confirmation page, and the order is safely on the books.
+      console.error(
+        `Customer receipt failed for order ${order.id}:`,
+        customer.reason,
+      );
+    }
+
+    if (owner.status === "rejected") {
+      // This one does rethrow. Losing the bake list means an order that
+      // has been paid for never gets made, so it's worth a duplicate
+      // receipt on the retry to get another attempt at it.
+      throw owner.reason;
+    }
+  });
 }

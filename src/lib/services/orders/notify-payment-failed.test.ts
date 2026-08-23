@@ -51,8 +51,8 @@ describe("notifyPaymentFailed", () => {
 
     expect(sendPaymentFailedMock).toHaveBeenCalledWith(
       ORDER,
-      "owner@example.com",
       "Your Neighbour",
+      "owner@example.com",
     );
   });
 
