@@ -49,6 +49,31 @@ export default async function HomePage() {
           <h2 className="mt-2 font-heading text-2xl font-semibold text-foreground sm:text-3xl">
             The Menu
           </h2>
+          {/* The shared half of every treat's description, lifted out of the
+              cards. All four opened with the same seven words ("Soft Bread
+              Stuffed w/ Cream Cheese Mix..."), so the part that actually
+              decides the purchase -- the drizzle -- sat at the end of the
+              third line, four times over. Said once here, each card is free
+              to lead with its difference. Same move menu-grid.tsx already
+              makes for the allergens shared by every item.
+
+              It also gives the page somewhere to say what these *are*: the
+              hero sells "fresh, baked to order" without ever naming the
+              product. */}
+          <p className="mt-3 max-w-prose text-sm text-muted-foreground sm:text-base">
+            Every treat starts the same way — soft bread stuffed with cream
+            cheese, soaked in sugar syrup. What changes is the finish.
+          </p>
+          {/* The sizes are quoted in two different units — one in inches,
+              two in pieces — so there's no way to weigh a pan against a box
+              from the labels alone. Answering it once here rather than in
+              the segment labels: "9" Pan · serves 5" wrapped onto two lines
+              in a 104px segment and left the separator dangling at the
+              break, which made the default option the ugliest control on
+              the card. */}
+          <p className="mt-2 max-w-prose text-sm text-muted-foreground sm:text-base">
+            A 9″ pan serves about 5; the boxes come as 12 or 24 pieces.
+          </p>
         </div>
         <MenuGrid categories={categories} products={products} />
       </section>

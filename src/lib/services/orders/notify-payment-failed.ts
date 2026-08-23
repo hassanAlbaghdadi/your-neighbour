@@ -17,10 +17,6 @@ import { notifyOnce } from "@/lib/services/orders/notification-lease";
  */
 export async function notifyPaymentFailed(orderId: string): Promise<void> {
   await notifyOnce(orderId, (order, settings) =>
-    sendPaymentFailedNotification(
-      order,
-      settings.businessName,
-      settings.contactEmail,
-    ),
+    sendPaymentFailedNotification(order, settings),
   );
 }

@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { pickupInstant, businessToday } from "./time"
+import {
+  pickupInstant,
+  businessToday,
+  formatPickupDate,
+  formatPickupTime,
+} from "./time"
 
 describe("pickupInstant", () => {
   it("reads the wall clock as Atlantic, not as the host's zone", () => {
@@ -34,5 +39,47 @@ describe("businessToday", () => {
     // 23:30 Halifax on the 21st is already 02:30Z on the 22nd.
     expect(businessToday(new Date("2026-08-22T02:30:00Z"))).toBe("2026-08-21")
     expect(businessToday(new Date("2026-08-22T12:00:00Z"))).toBe("2026-08-22")
+  })
+})
+
+describe("formatPickupDate", () => {
+  it("renders the calendar day the customer actually picked", () => {
+    expect(formatPickupDate("2026-08-26")).toBe("Wednesday, August 26, 2026")
+  })
+
+  it("does not shift the day backwards in a negative-offset zone", () => {
+    // The bug this formatter exists to prevent. `new Date("2026-08-26")`
+    // parses as UTC midnight, which is 21:00 on the 25th in Halifax, so a
+    // naive format tells the customer to collect their order a day early.
+    expect(formatPickupDate("2026-08-26")).toContain("26")
+    expect(formatPickupDate("2026-08-26")).not.toContain("25")
+  })
+
+  it("handles the first of a month, where an off-by-one also changes the month", () => {
+    expect(formatPickupDate("2026-09-01")).toBe("Tuesday, September 1, 2026")
+  })
+
+  it("passes malformed input through rather than rendering a wrong date", () => {
+    expect(formatPickupDate("not-a-date")).toBe("not-a-date")
+  })
+})
+
+describe("formatPickupTime", () => {
+  it("renders a settings slot in 12-hour form", () => {
+    expect(formatPickupTime("09:00")).toBe("9:00 AM")
+    expect(formatPickupTime("09:30")).toBe("9:30 AM")
+  })
+
+  it("accepts the seconds-bearing form Postgres returns for a time column", () => {
+    // orders.pickup_time comes back as "09:00:00"; settings slots do not.
+    expect(formatPickupTime("09:00:00")).toBe("9:00 AM")
+  })
+
+  it("disambiguates noon, which 24-hour 12:00 left ambiguous", () => {
+    expect(formatPickupTime("12:00")).toBe("12:00 PM")
+  })
+
+  it("passes malformed input through", () => {
+    expect(formatPickupTime("nope")).toBe("nope")
   })
 })

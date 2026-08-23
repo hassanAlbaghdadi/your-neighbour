@@ -36,6 +36,7 @@ vi.mock("@/app/actions/orders", () => ({
 const settings: StoreSettings = {
   businessName: "Your Neighbour",
   contactEmail: "hello@example.com",
+  pickupAddress: "12 Example St, Halifax NS",
   maxOrdersPerDay: 50,
   minAdvanceHours: 0,
   pickupTimeSlots: ["23:59"],
@@ -61,7 +62,7 @@ async function fillCheckoutForm() {
   });
   fireEvent.click(firstEnabledDay);
 
-  const slotButton = await screen.findByRole("button", { name: "23:59" });
+  const slotButton = await screen.findByRole("button", { name: "11:59 PM" });
   fireEvent.click(slotButton);
 
   fireEvent.change(screen.getByLabelText(/full name/i), {
@@ -119,7 +120,7 @@ describe("CheckoutForm double-submit protection", () => {
     render(<CheckoutForm settings={settings} orderCounts={{}} />);
     await fillCheckoutForm();
 
-    const submitButton = screen.getByRole("button", { name: /place order/i });
+    const submitButton = screen.getByRole("button", { name: /continue to payment/i });
     fireEvent.click(submitButton);
     fireEvent.click(submitButton);
 
@@ -134,7 +135,7 @@ describe("CheckoutForm double-submit protection", () => {
     render(<CheckoutForm settings={settings} orderCounts={{}} />);
     await fillCheckoutForm();
 
-    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
 
     await waitFor(() =>
       expect(createOrderActionMock).toHaveBeenCalledTimes(1),
@@ -152,7 +153,7 @@ describe("CheckoutForm double-submit protection", () => {
     render(<CheckoutForm settings={settings} orderCounts={{}} />);
     await fillCheckoutForm();
 
-    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
 
     await waitFor(() =>
       expect(createOrderActionMock).toHaveBeenCalledTimes(1),
@@ -162,6 +163,53 @@ describe("CheckoutForm double-submit protection", () => {
     // numeric `price`/`subtotal` the cart context provides — asserting both
     // guards against a future formatPrice refactor leaking into the payload.
     expect(screen.getAllByText("$8.00")).toHaveLength(2);
+  });
+
+  it("submits the raw HH:mm slot even though the button shows 12-hour time", async () => {
+    // The slot buttons render "11:59 PM" for the customer, but the server
+    // validates pickupTime against settings.pickupTimeSlots, which are raw
+    // 24-hour strings. If the formatted label ever leaked into the payload,
+    // create-order would reject the slot as invalid.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await fillCheckoutForm();
+
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+
+    await waitFor(() =>
+      expect(createOrderActionMock).toHaveBeenCalledTimes(1),
+    );
+
+    expect(createOrderActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pickupTime: "23:59" }),
+    );
+  });
+
+  it("shows the order summary before the submit button in document order", () => {
+    // On a phone the grid collapses to one column, so DOM order IS visual
+    // order: with the summary after the button the customer committed
+    // without ever seeing the items or the total. A CSS-only fix would pass
+    // a visual check and still read wrong to a screen reader, so this
+    // asserts document position rather than styling.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+
+    const summary = screen.getByRole("heading", { name: /order summary/i });
+    const submit = screen.getByRole("button", { name: /continue to payment/i });
+
+    // Node.compareDocumentPosition: FOLLOWING means submit comes after summary.
+    expect(
+      summary.compareDocumentPosition(submit) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("puts the order total on the submit button", () => {
+    // The button hands off to Stripe rather than completing the order, so
+    // it names the next step and carries the amount.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+
+    expect(
+      screen.getByRole("button", { name: /continue to payment · \$8\.00/i }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -197,7 +245,7 @@ describe("CheckoutForm validation focus", () => {
   });
 
   async function submitAndSettle() {
-    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
     await waitFor(() =>
       expect(screen.getAllByRole("alert").length).toBeGreaterThan(0),
     );
@@ -225,14 +273,14 @@ describe("CheckoutForm validation focus", () => {
     await submitAndSettle();
 
     expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: "23:59" }),
+      screen.getByRole("button", { name: "11:59 PM" }),
     );
   });
 
   it("falls through to the first invalid text field once pickup is set", async () => {
     render(<CheckoutForm settings={settings} orderCounts={{}} />);
     await pickDate();
-    fireEvent.click(await screen.findByRole("button", { name: "23:59" }));
+    fireEvent.click(await screen.findByRole("button", { name: "11:59 PM" }));
 
     await submitAndSettle();
 
@@ -242,7 +290,7 @@ describe("CheckoutForm validation focus", () => {
   it("skips fields that are already valid", async () => {
     render(<CheckoutForm settings={settings} orderCounts={{}} />);
     await pickDate();
-    fireEvent.click(await screen.findByRole("button", { name: "23:59" }));
+    fireEvent.click(await screen.findByRole("button", { name: "11:59 PM" }));
     fireEvent.change(screen.getByLabelText(/full name/i), {
       target: { value: "Jane Doe" },
     });

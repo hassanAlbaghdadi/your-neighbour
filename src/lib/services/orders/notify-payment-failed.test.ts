@@ -44,16 +44,13 @@ describe("notifyPaymentFailed", () => {
     expect(notifyOnceMock).toHaveBeenCalledWith(ORDER_ID, expect.any(Function));
   });
 
-  it("passes the contact email and business name in the right order", async () => {
-    // Both are bare strings, so a swap would compile and simply mail the
-    // wrong thing — worth pinning.
+  it("hands the sender the whole settings object", async () => {
+    // Previously this passed businessName and contactEmail as two bare
+    // positional strings, where a swap compiled fine and mailed the wrong
+    // thing. One object argument removes that failure mode entirely.
     await notifyPaymentFailed(ORDER_ID);
 
-    expect(sendPaymentFailedMock).toHaveBeenCalledWith(
-      ORDER,
-      "Your Neighbour",
-      "owner@example.com",
-    );
+    expect(sendPaymentFailedMock).toHaveBeenCalledWith(ORDER, SETTINGS);
   });
 
   it("does not send when the lease was already taken", async () => {

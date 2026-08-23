@@ -5,6 +5,7 @@ import type { StoreSettings } from "@/lib/services/settings/get-settings";
 const KEY_MAP: Record<keyof StoreSettings, string> = {
   businessName: "business_name",
   contactEmail: "contact_email",
+  pickupAddress: "pickup_address",
   maxOrdersPerDay: "max_orders_per_day",
   minAdvanceHours: "min_advance_hours",
   pickupTimeSlots: "pickup_time_slots",

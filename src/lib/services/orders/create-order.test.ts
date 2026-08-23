@@ -15,6 +15,7 @@ vi.mock("@/lib/supabase/serviceRole", () => ({
 const BASE_SETTINGS: StoreSettings = {
   businessName: "Your Neighbour",
   contactEmail: "owner@example.com",
+  pickupAddress: "12 Example St, Halifax NS",
   maxOrdersPerDay: 50,
   minAdvanceHours: 0,
   pickupTimeSlots: ["10:00"],

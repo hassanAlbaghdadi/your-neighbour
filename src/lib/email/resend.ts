@@ -2,6 +2,8 @@ import "server-only";
 import { Resend } from "resend";
 import { formatPrice } from "@/lib/utils";
 import type { OrderResult } from "@/lib/services/orders/create-order";
+import type { StoreSettings } from "@/lib/services/settings/get-settings";
+import { formatPickupDate, formatPickupTime } from "@/lib/time";
 
 /**
  * Resend's shared sandbox sender. It requires no domain verification,
@@ -68,9 +70,9 @@ function formatItemsList(items: OrderResult["items"]): string {
  */
 export async function sendCustomerReceipt(
   order: OrderResult,
-  businessName: string,
-  contactEmail: string,
+  settings: StoreSettings,
 ): Promise<void> {
+  const { businessName, contactEmail, pickupAddress } = settings;
   const resend = new Resend(process.env.RESEND_API_KEY);
   const firstName = order.customerName.split(" ")[0];
 
@@ -95,7 +97,9 @@ ${formatItemsList(order.items)}
 
 Total: ${formatPrice(order.total)}
 
-Pickup: ${order.pickupDate} at ${order.pickupTime}
+Pickup: ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}${
+      pickupAddress ? `\nWhere: ${pickupAddress}` : ""
+    }
 ${order.notes ? `\nYour notes: ${order.notes}\n` : ""}
 See you soon!
 ${businessName}`,
@@ -110,8 +114,9 @@ ${businessName}`,
  */
 export async function sendOwnerAlert(
   order: OrderResult,
-  ownerEmail: string,
+  settings: StoreSettings,
 ): Promise<void> {
+  const ownerEmail = settings.contactEmail;
   const resend = new Resend(process.env.RESEND_API_KEY);
 
   await resend.emails.send({
@@ -122,14 +127,14 @@ export async function sendOwnerAlert(
     // than the sending subdomain's void.
     replyTo: ownerEmail,
     to: ownerEmail,
-    subject: `New order from ${order.customerName} — pickup ${order.pickupDate}`,
+    subject: `New order from ${order.customerName} — pickup ${formatPickupDate(order.pickupDate)}`,
     text: `New order received.
 
 Customer: ${order.customerName}
 Email: ${order.customerEmail}
 Phone: ${order.customerPhone}
 
-Pickup: ${order.pickupDate} at ${order.pickupTime}
+Pickup: ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}
 
 Items to bake:
 ${formatItemsList(order.items)}
@@ -147,14 +152,15 @@ Total: ${formatPrice(order.total)}${order.notes ? `\n\nCustomer notes: ${order.n
  * Customer-only on purpose: a payment that never landed isn't an order, and
  * the owner alert is meant to be a bake list, not a feed of non-events.
  */
-// Parameter order matches sendCustomerReceipt above deliberately: both
-// take two bare strings after the order, so opposite orders would compile
-// fine and simply send the wrong thing.
+// All three senders take (order, settings) rather than a list of bare
+// strings. An earlier signature passed businessName and contactEmail
+// positionally, which meant two same-typed arguments whose opposite order
+// compiled fine and simply mailed the wrong thing.
 export async function sendPaymentFailedNotification(
   order: OrderResult,
-  businessName: string,
-  contactEmail: string,
+  settings: StoreSettings,
 ): Promise<void> {
+  const { businessName, contactEmail } = settings;
   const resend = new Resend(process.env.RESEND_API_KEY);
   const firstName = order.customerName.split(" ")[0];
 
@@ -168,7 +174,7 @@ export async function sendPaymentFailedNotification(
     text: `Hi ${firstName},
 
 Unfortunately your payment didn't go through, so we've had to release your
-pickup slot for ${order.pickupDate} at ${order.pickupTime}.
+pickup slot for ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}.
 
 You have not been charged. If you'd still like these items, you're very
 welcome to place the order again:

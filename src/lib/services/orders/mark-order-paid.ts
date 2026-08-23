@@ -40,8 +40,8 @@ export async function markOrderPaid(orderId: string): Promise<void> {
     // the bake list down with it on every order. Both are attempted
     // unconditionally now.
     const [owner, customer] = await Promise.allSettled([
-      sendOwnerAlert(order, settings.contactEmail),
-      sendCustomerReceipt(order, settings.businessName, settings.contactEmail),
+      sendOwnerAlert(order, settings),
+      sendCustomerReceipt(order, settings),
     ]);
 
     if (customer.status === "rejected") {

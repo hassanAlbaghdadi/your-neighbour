@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 export interface StoreSettings {
   businessName: string;
   contactEmail: string;
+  pickupAddress: string;
   maxOrdersPerDay: number;
   minAdvanceHours: number;
   pickupTimeSlots: string[];
@@ -13,6 +14,7 @@ export interface StoreSettings {
 const DEFAULTS: StoreSettings = {
   businessName: "Your Neighbour",
   contactEmail: "",
+  pickupAddress: "",
   maxOrdersPerDay: 15,
   minAdvanceHours: 24,
   pickupTimeSlots: [],
@@ -37,6 +39,9 @@ export const getSettings = cache(async (): Promise<StoreSettings> => {
       (value.get("business_name") as string | undefined) ?? DEFAULTS.businessName,
     contactEmail:
       (value.get("contact_email") as string | undefined) ?? DEFAULTS.contactEmail,
+    pickupAddress:
+      (value.get("pickup_address") as string | undefined) ??
+      DEFAULTS.pickupAddress,
     maxOrdersPerDay:
       (value.get("max_orders_per_day") as number | undefined) ??
       DEFAULTS.maxOrdersPerDay,

@@ -107,11 +107,15 @@ describe("markOrderPaid", () => {
 
     expect(flip.payload).toEqual({ payment_status: "paid" });
     expect(claim.payload).toMatchObject({ notified_at: expect.any(String) });
-    expect(sendOwnerAlertMock).toHaveBeenCalledWith(ORDER, "owner@example.com");
+    // Both senders take the whole settings object, so there are no
+    // same-typed positional strings left to transpose.
+    expect(sendOwnerAlertMock).toHaveBeenCalledWith(
+      ORDER,
+      expect.objectContaining({ contactEmail: "owner@example.com" }),
+    );
     expect(sendCustomerReceiptMock).toHaveBeenCalledWith(
       ORDER,
-      "Your Neighbour",
-      "owner@example.com",
+      expect.objectContaining({ businessName: "Your Neighbour" }),
     );
   });
 

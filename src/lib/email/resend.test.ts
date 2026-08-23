@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { StoreSettings } from "@/lib/services/settings/get-settings";
 
 const sendMock = vi.fn();
 
@@ -9,6 +10,16 @@ vi.mock("resend", () => ({
 }));
 
 const { sendCustomerReceipt, sendOwnerAlert } = await import("./resend");
+
+const SETTINGS = {
+  businessName: "Your Neighbour",
+  contactEmail: "hello@example.com",
+  pickupAddress: "12 Example St, Halifax NS",
+  maxOrdersPerDay: 50,
+  minAdvanceHours: 48,
+  pickupTimeSlots: ["09:00"],
+  blackoutDates: [],
+} satisfies StoreSettings;
 
 const ORDER = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -40,7 +51,7 @@ describe("order email sender address", () => {
   it("sends from the configured address when RESEND_FROM_EMAIL is set", async () => {
     vi.stubEnv("RESEND_FROM_EMAIL", "Your Neighbour <orders@example.com>");
 
-    await sendCustomerReceipt(ORDER, "Your Neighbour", "owner@example.com");
+    await sendCustomerReceipt(ORDER, SETTINGS);
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({ from: "Your Neighbour <orders@example.com>" }),
@@ -57,7 +68,7 @@ describe("order email sender address", () => {
     vi.stubEnv("RESEND_FROM_EMAIL", "");
 
     await expect(
-      sendCustomerReceipt(ORDER, "Your Neighbour", "owner@example.com"),
+      sendCustomerReceipt(ORDER, SETTINGS),
     ).rejects.toThrow(/RESEND_FROM_EMAIL is not set/);
     expect(sendMock).not.toHaveBeenCalled();
   });
@@ -66,7 +77,7 @@ describe("order email sender address", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("RESEND_FROM_EMAIL", "");
 
-    await expect(sendOwnerAlert(ORDER, "owner@example.com")).rejects.toThrow(
+    await expect(sendOwnerAlert(ORDER, SETTINGS)).rejects.toThrow(
       /RESEND_FROM_EMAIL is not set/,
     );
   });
@@ -75,7 +86,7 @@ describe("order email sender address", () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("RESEND_FROM_EMAIL", "");
 
-    await sendCustomerReceipt(ORDER, "Your Neighbour", "owner@example.com");
+    await sendCustomerReceipt(ORDER, SETTINGS);
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({ from: expect.stringContaining("onboarding@resend.dev") }),
@@ -85,27 +96,27 @@ describe("order email sender address", () => {
   it("addresses each email to the right recipient", async () => {
     vi.stubEnv("RESEND_FROM_EMAIL", "orders@example.com");
 
-    await sendCustomerReceipt(ORDER, "Your Neighbour", "owner@example.com");
-    await sendOwnerAlert(ORDER, "owner@example.com");
+    await sendCustomerReceipt(ORDER, SETTINGS);
+    await sendOwnerAlert(ORDER, SETTINGS);
 
     expect(sendMock.mock.calls[0][0]).toMatchObject({ to: "jane@example.com" });
-    expect(sendMock.mock.calls[1][0]).toMatchObject({ to: "owner@example.com" });
+    expect(sendMock.mock.calls[1][0]).toMatchObject({ to: SETTINGS.contactEmail });
   });
 
   it("sets reply-to on the customer receipt, since the sending subdomain has no inbox behind it", async () => {
     vi.stubEnv("RESEND_FROM_EMAIL", "orders@send.example.com");
 
-    await sendCustomerReceipt(ORDER, "Your Neighbour", "hello@example.com");
+    await sendCustomerReceipt(ORDER, SETTINGS);
 
     expect(sendMock).toHaveBeenCalledWith(
-      expect.objectContaining({ replyTo: "hello@example.com" }),
+      expect.objectContaining({ replyTo: SETTINGS.contactEmail }),
     );
   });
 
   it("omits reply-to on the customer receipt when no contact email is configured", async () => {
     vi.stubEnv("RESEND_FROM_EMAIL", "orders@send.example.com");
 
-    await sendCustomerReceipt(ORDER, "Your Neighbour", "");
+    await sendCustomerReceipt(ORDER, { ...SETTINGS, contactEmail: "" });
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.not.objectContaining({ replyTo: expect.anything() }),
@@ -115,10 +126,10 @@ describe("order email sender address", () => {
   it("sets reply-to on the owner alert to the owner's own address", async () => {
     vi.stubEnv("RESEND_FROM_EMAIL", "orders@send.example.com");
 
-    await sendOwnerAlert(ORDER, "owner@example.com");
+    await sendOwnerAlert(ORDER, SETTINGS);
 
     expect(sendMock).toHaveBeenCalledWith(
-      expect.objectContaining({ replyTo: "owner@example.com" }),
+      expect.objectContaining({ replyTo: SETTINGS.contactEmail }),
     );
   });
 });

@@ -87,3 +87,50 @@ export function businessToday(now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${p.year}-${pad(p.month)}-${pad(p.day)}`
 }
+
+/**
+ * Both formatters below deliberately build a UTC instant and format it back
+ * in UTC. A pickup date is a wall-clock calendar day with no instant behind
+ * it, so any zone conversion can only ever move it to the wrong day:
+ * `new Date("2026-08-26")` parses as UTC midnight, which is 21:00 on the
+ * 25th in Halifax, so a naive format renders the day *before* the customer
+ * is meant to collect their order. Anchoring at UTC noon and reading it back
+ * in UTC keeps the calendar day the customer picked, whatever zone the
+ * process is in.
+ *
+ * en-US rather than en-CA: the two render the date identically, but en-CA
+ * formats times as "9:00 a.m." where en-US gives "9:00 AM", which is what
+ * the rest of the UI already looks like.
+ */
+const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "long",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+})
+
+const TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+})
+
+/** `2026-08-26` -> `Wednesday, August 26, 2026`. Input passes through unchanged if malformed. */
+export function formatPickupDate(date: string): string {
+  const [year, month, day] = date.split("-").map(Number)
+  if (!year || !month || !day) return date
+  return DATE_FORMATTER.format(new Date(Date.UTC(year, month - 1, day, 12)))
+}
+
+/**
+ * `09:00` -> `9:00 AM`. Also accepts `09:00:00`, which is what Postgres
+ * hands back for a `time` column — the settings slots carry no seconds but
+ * orders.pickup_time does, and both reach these callers.
+ */
+export function formatPickupTime(time: string): string {
+  const [hour, minute] = time.split(":").map(Number)
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return time
+  return TIME_FORMATTER.format(new Date(Date.UTC(2000, 0, 1, hour, minute)))
+}

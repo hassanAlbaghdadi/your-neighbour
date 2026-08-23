@@ -27,7 +27,7 @@ import {
 import { useCart } from "@/context/cart-context";
 import { createOrderAction } from "@/app/actions/orders";
 import { formatPrice } from "@/lib/utils";
-import { pickupInstant } from "@/lib/time";
+import { pickupInstant, formatPickupTime } from "@/lib/time";
 import {
   checkoutFormSchema,
   type CheckoutFormValues,
@@ -117,6 +117,10 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
   });
 
   const pickupTime = useWatch({ control, name: "pickupTime" });
+
+  const hasMixBox = items.some((item) =>
+    item.variantLabel?.toLowerCase().includes("mix"),
+  );
 
   function isDateDisabled(date: Date) {
     if (isBefore(date, startOfDay(new Date()))) return true;
@@ -248,7 +252,43 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
       noValidate
       className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]"
     >
-      <FieldGroup>
+      <aside className="h-fit rounded-xl border border-border bg-card p-5 lg:order-2">
+        <h2 className="font-heading text-lg font-semibold text-foreground">
+          Order Summary
+        </h2>
+        <ul className="mt-4 flex flex-col gap-3">
+          {items.map((item) => (
+            <li
+              key={item.variantId}
+              className="flex items-center justify-between text-sm"
+            >
+              <span className="text-foreground">
+                {item.quantity} × {item.name}
+                {item.variantLabel && (
+                  <span className="text-muted-foreground"> — {item.variantLabel}</span>
+                )}
+              </span>
+              <span className="text-muted-foreground">
+                {formatPrice(item.price * item.quantity)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-base font-medium text-foreground">
+          <span>Total</span>
+          <span>{formatPrice(subtotal)}</span>
+        </div>
+      </aside>
+
+      {/* Ahead of the fields in the DOM, not just visually. On a phone the
+          grid collapses to one column, and this used to land ~200px BELOW
+          the submit button -- so the customer entered their details and
+          committed without ever seeing what they were buying or what it
+          cost. Ordering it here rather than with CSS alone also means a
+          screen reader reaches the contents and total before the form,
+          which is the same order a sighted phone user now gets. Desktop is
+          unchanged: lg:order-2 sends it back to the right-hand column. */}
+      <FieldGroup className="lg:order-1">
         <Field>
           <FieldLabel htmlFor="pickup-date">Pickup date</FieldLabel>
           <Popover open={dateOpen} onOpenChange={setDateOpen}>
@@ -306,7 +346,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
                     variant={pickupTime === slot ? "default" : "outline"}
                     onClick={() => setValue("pickupTime", slot)}
                   >
-                    {slot}
+                    {formatPickupTime(slot)}
                   </Button>
                 ))
               )}
@@ -354,19 +394,29 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
 
         <Field>
           <FieldLabel htmlFor="notes">Notes (optional)</FieldLabel>
+          {/* A mix box is sold as "tell us which flavours you'd like in the
+              order notes", and this is that box — but the generic prompt
+              gave no hint that a choice was owed, so the request arrived
+              blank and someone had to chase it. Matched on the variant
+              label rather than the product name because the flavour choice
+              belongs to the mix *sizes*, whatever the product is called. */}
           <Textarea
             id="notes"
             rows={3}
-            placeholder="Anything we should know about your order?"
+            placeholder={
+              hasMixBox
+                ? "Which flavours would you like in your mix box?"
+                : "Anything we should know about your order?"
+            }
             {...register("notes")}
           />
           <FieldError errors={[errors.notes]} />
         </Field>
 
-        <Button type="submit" size="lg" disabled={submitting}>
-          {submitting ? "Placing order…" : "Place Order"}
-        </Button>
-
+        {/* Above the button, not below it. This is the answer to "what
+            happens when I press that?", and underneath the control it
+            describes it was routinely read only after the fact -- on a
+            phone it sat below the fold entirely. */}
         <p className="text-sm text-muted-foreground">
           You&apos;ll pay securely via Stripe on the next screen. Payment
           reserves your pickup slot — need to change or cancel afterwards?{" "}
@@ -385,35 +435,19 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
             <>Just get in touch and we&apos;ll sort it out.</>
           )}
         </p>
+
+        {/* "Place Order" was a promise this button doesn't keep -- it
+            creates the order, then hands off to Stripe, so the customer met
+            an unexpected payment screen at the exact moment they thought
+            they were done. Naming the next step and carrying the amount
+            removes the last "what will this cost me?" beat before commit. */}
+        <Button type="submit" size="lg" disabled={submitting}>
+          {submitting
+            ? "Taking you to payment…"
+            : `Continue to payment · ${formatPrice(subtotal)}`}
+        </Button>
       </FieldGroup>
 
-      <aside className="h-fit rounded-xl border border-border bg-card p-5">
-        <h2 className="font-heading text-lg font-semibold text-foreground">
-          Order Summary
-        </h2>
-        <ul className="mt-4 flex flex-col gap-3">
-          {items.map((item) => (
-            <li
-              key={item.variantId}
-              className="flex items-center justify-between text-sm"
-            >
-              <span className="text-foreground">
-                {item.quantity} × {item.name}
-                {item.variantLabel && (
-                  <span className="text-muted-foreground"> — {item.variantLabel}</span>
-                )}
-              </span>
-              <span className="text-muted-foreground">
-                {formatPrice(item.price * item.quantity)}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-base font-medium text-foreground">
-          <span>Total</span>
-          <span>{formatPrice(subtotal)}</span>
-        </div>
-      </aside>
     </form>
   );
 }

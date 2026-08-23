@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { format, parseISO } from "date-fns";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClearCartOnSuccess } from "@/components/checkout/clear-cart-on-success";
 import { PendingPayment } from "@/components/checkout/pending-payment";
 import { getOrderById } from "@/lib/services/orders/get-order";
 import { getSettings } from "@/lib/services/settings/get-settings";
 import { formatPrice } from "@/lib/utils";
+import { formatPickupDate, formatPickupTime } from "@/lib/time";
 
 export default async function ConfirmationPage(
   props: PageProps<"/confirmation/[orderId]">,
@@ -50,14 +50,36 @@ export default async function ConfirmationPage(
           <div>
             <p className="text-muted-foreground">Pickup date</p>
             <p className="font-medium text-foreground">
-              {format(parseISO(order.pickupDate), "EEEE, MMMM d, yyyy")}
+              {formatPickupDate(order.pickupDate)}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Pickup time</p>
-            <p className="font-medium text-foreground">{order.pickupTime}</p>
+            <p className="font-medium text-foreground">
+              {formatPickupTime(order.pickupTime)}
+            </p>
           </div>
         </div>
+
+        {settings.pickupAddress && (
+          <div className="flex items-start gap-2 border-b border-border py-4 text-sm">
+            <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            <div>
+              <p className="text-muted-foreground">Pickup address</p>
+              <p className="font-medium text-foreground">
+                {settings.pickupAddress}
+              </p>
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(settings.pickupAddress)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-4"
+              >
+                Open in maps
+              </a>
+            </div>
+          </div>
+        )}
 
         <ul className="flex flex-col gap-3 py-4">
           {order.items.map((item, index) => (
