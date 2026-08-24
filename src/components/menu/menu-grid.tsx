@@ -63,8 +63,12 @@ export function MenuGrid({
     return () => observer.disconnect();
   }, []);
 
+  // pt-2 rather than a symmetric py-8: the allergen note below is the third
+  // line of the menu's intro copy, and the other two live in page.tsx's
+  // header block. A full py-8 here put a 32px seam between paragraphs that
+  // sit 8px apart, splitting one block of prose into two.
   return (
-    <div ref={rootRef} className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+    <div ref={rootRef} className="mx-auto w-full max-w-6xl px-4 pt-2 pb-8 sm:px-6">
       {SHOW_CATEGORY_FILTER && (
         <div className="mb-8 flex flex-wrap gap-2">
           <Button

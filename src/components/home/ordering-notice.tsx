@@ -1,3 +1,5 @@
+import { Clock } from "lucide-react";
+
 interface OrderingNoticeProps {
   minAdvanceHours: number;
 }
@@ -11,22 +13,25 @@ interface OrderingNoticeProps {
  * surrounding it with filler made the page's single most decision-relevant
  * fact read as decoration.
  *
- * So this block does the one job the hero doesn't: set the ordering
- * constraint before anyone starts building a cart they can't check out.
+ * It then spent a while as a full centred section with an eyebrow and a
+ * heading at the same scale as "The Menu" -- which made a restriction the
+ * first typographic headline anyone read after the hero. A customer met the
+ * limitation before they had seen a single thing they might want, and it
+ * outranked the products in the page's hierarchy.
+ *
+ * A strip keeps the fact and drops the weight. The lead time is stated in
+ * two further places that are closer to where it actually bites -- the cart
+ * footer, and the earliest-pickup line under the checkout date picker -- so
+ * this one only has to set expectations in passing, not argue the case.
  */
 export function OrderingNotice({ minAdvanceHours }: OrderingNoticeProps) {
   return (
     <section className="border-b border-border bg-background">
-      <div className="mx-auto w-full max-w-2xl px-4 py-12 text-center sm:px-6 sm:py-14">
-        <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
-          Before you order
-        </p>
-        <p className="mt-4 font-heading text-2xl font-semibold text-foreground sm:text-3xl">
-          Orders need {minAdvanceHours} hours’ notice
-        </p>
-        <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-          Pickup only, from the North End. You’ll choose your pickup day
-          and time at checkout.
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-center gap-2 px-4 py-3 sm:px-6">
+        <Clock className="size-4 shrink-0 text-terracotta-600" />
+        <p className="text-center text-sm text-muted-foreground">
+          Orders need {minAdvanceHours} hours’ notice · Pickup only, from the
+          North End
         </p>
       </div>
     </section>
