@@ -206,17 +206,20 @@ describe("CheckoutForm double-submit protection", () => {
   });
 
   it("names the earliest pickup date, and agrees with the calendar", async () => {
-    // The hint's whole job is to answer "why can't I pick today?" before the
-    // picker is opened, so it has to name the same day the calendar will
-    // actually accept -- it runs the real isDateDisabled rather than
-    // re-deriving the rules.
+    // The hint's whole job is to answer "can I get this in time?" and "why
+    // can't I pick today?" before the picker is opened, so it has to name the
+    // same day the calendar will actually accept -- it runs the real status
+    // resolver rather than re-deriving the rules. A hint that disagreed with
+    // the picker underneath it would be worse than no hint.
     render(<CheckoutForm settings={settings} orderCounts={{}} />);
 
     const hint = screen.getByText(/earliest pickup is/i);
-    expect(hint).toHaveTextContent(/48 hours|0 hours/);
+    const named = hint.textContent!.match(
+      /Earliest pickup is (\w{3}), (\w{3}) (\d+)/,
+    );
+    expect(named).not.toBeNull();
+    const [, weekday, month, dayOfMonth] = named!;
 
-    // Whatever day the hint names must be selectable in the calendar.
-    const named = hint.textContent!.match(/Earliest pickup is (\w{3}, \w{3} \d+)/)![1];
     fireEvent.click(screen.getByRole("button", { name: /pickup date/i }));
     const day = await waitFor(() => {
       const d = screen
@@ -224,10 +227,30 @@ describe("CheckoutForm double-submit protection", () => {
         .find((b) => b.hasAttribute("data-day") && !b.hasAttribute("disabled"));
       if (!d) throw new Error("calendar not ready");
       return d;
-    });
-    const label = day.getAttribute("aria-label") ?? day.textContent ?? "";
-    expect(label.length).toBeGreaterThan(0);
-    expect(named).toBeTruthy();
+    }, { timeout: 5000 });
+
+    // react-day-picker labels a day "Monday, August 24th, 2026", and prefixes
+    // "Today, " when it is the current date -- hence contains rather than
+    // startsWith. The hint abbreviates ("Mon, Aug 24"), so comparing all
+    // three parts is what actually pins the two to the same date; the old
+    // assertion only checked the hint had matched its own regex, which it
+    // cannot fail to do.
+    const label = day.getAttribute("aria-label") ?? "";
+    expect(label).toContain(weekday);
+    expect(label).toContain(month);
+    expect(label).toMatch(new RegExp(`\\b${dayOfMonth}(st|nd|rd|th)\\b`));
+  });
+
+  it("gives the reason for the wait without quoting the lead-time setting", async () => {
+    // minAdvanceHours is owner-configurable, so copy that interpolated it had
+    // to stay accurate through a settings change. Naming the cause instead of
+    // the number also frames the wait as why someone is buying here rather
+    // than as a restriction.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+
+    const hint = screen.getByText(/earliest pickup is/i);
+    expect(hint).toHaveTextContent("everything’s baked to order");
+    expect(hint).not.toHaveTextContent(/hours/i);
   });
 
   it("drops the hint once a date is chosen", async () => {

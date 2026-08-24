@@ -371,15 +371,23 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
             invalid={!!errors.pickupDate}
             describedBy={errors.pickupDate ? "pickupDate-error" : undefined}
           />
-          {/* Answers "why can't I pick today?" at the moment it's asked. The
-              48-hour rule is stated on the homepage and in the cart footer,
-              but neither is on screen here -- so the first three days simply
-              appeared greyed with no reason given. Hidden once a date is
-              chosen, when it has nothing left to explain. */}
+          {/* Answers both "can I get this in time?" and "why can't I pick
+              today?" before the picker is opened -- and since the calendar
+              carries no legend, it is the only thing on this page that
+              explains the greyed days at all. Hidden once a date is chosen,
+              when it has nothing left to explain.
+
+              "everything's baked to order" rather than "orders need N hours'
+              notice": the same fact, given as the reason someone is buying
+              here instead of a supermarket rather than as a restriction. It
+              also echoes the homepage h1 ("Fresh, baked to order") without
+              spending "fresh" on them a third time, and it stops the line
+              depending on minAdvanceHours -- which is owner-configurable, so
+              the old copy had to stay accurate through a settings change. */}
           {!selectedDate && earliestAvailable && (
             <FieldDescription>
               Earliest pickup is {format(earliestAvailable, "EEE, MMM d")} —
-              orders need {settings.minAdvanceHours} hours&rsquo; notice.
+              everything&rsquo;s baked to order.
             </FieldDescription>
           )}
           <FieldError id="pickupDate-error" errors={[errors.pickupDate]} />
