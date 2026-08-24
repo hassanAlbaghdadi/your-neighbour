@@ -2,6 +2,13 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { OrderStatus } from "@/types/database";
 
+export interface OrderLineItem {
+  productName: string;
+  variantLabel: string | null;
+  quantity: number;
+  unitPrice: number;
+}
+
 export interface OrderListItem {
   id: string;
   customerName: string;
@@ -11,6 +18,8 @@ export interface OrderListItem {
   total: number;
   status: OrderStatus;
   itemCount: number;
+  notes: string | null;
+  items: OrderLineItem[];
 }
 
 interface GetOrdersFilter {
@@ -26,7 +35,13 @@ interface OrderRow {
   pickup_time: string;
   total: number;
   status: OrderStatus;
-  order_items: { quantity: number }[];
+  notes: string | null;
+  order_items: {
+    product_name: string;
+    variant_label: string | null;
+    quantity: number;
+    unit_price: number;
+  }[];
 }
 
 /** Authenticated admin read — relies on RLS ("Admin Full Orders"), not service-role. */
@@ -38,7 +53,7 @@ export async function getOrders(
   let query = supabase
     .from("orders")
     .select(
-      "id, customer_name, customer_phone, pickup_date, pickup_time, total, status, order_items(quantity)",
+      "id, customer_name, customer_phone, pickup_date, pickup_time, total, status, notes, order_items(product_name, variant_label, quantity, unit_price)",
     )
     .order("pickup_date", { ascending: true })
     .order("pickup_time", { ascending: true });
@@ -63,6 +78,13 @@ export async function getOrders(
     pickupTime: order.pickup_time.slice(0, 5),
     total: order.total,
     status: order.status,
+    notes: order.notes,
     itemCount: order.order_items.reduce((sum, item) => sum + item.quantity, 0),
+    items: order.order_items.map((item) => ({
+      productName: item.product_name,
+      variantLabel: item.variant_label,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+    })),
   }));
 }

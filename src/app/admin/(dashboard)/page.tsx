@@ -2,7 +2,7 @@ import Link from "next/link";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { getOrders } from "@/lib/services/orders/get-orders";
 import { getBakingSummary } from "@/lib/services/orders/get-baking-summary";
-import { OrderStatusSelect } from "@/components/admin/order-status-select";
+import { OrderRow } from "@/components/admin/order-row";
 import { PageHeader } from "@/components/admin/page-header";
 import { StatTile } from "@/components/admin/stat-tile";
 import { Badge } from "@/components/ui/badge";
@@ -149,6 +149,7 @@ export default async function AdminOrdersPage({
           <table className="w-full text-sm">
             <thead className="bg-muted text-left text-muted-foreground">
               <tr>
+                <th className="w-8 px-2 py-2" aria-hidden />
                 <th className="px-4 py-2 font-medium">Customer</th>
                 <th className="px-4 py-2 font-medium">Pickup</th>
                 <th className="px-4 py-2 font-medium">Items</th>
@@ -160,41 +161,14 @@ export default async function AdminOrdersPage({
               {orders.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
                     No orders in this view.
                   </td>
                 </tr>
               ) : (
-                orders.map((order) => (
-                  <tr key={order.id}>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-foreground">
-                        {order.customerName}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {order.customerPhone}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-foreground">
-                      {format(parseISO(order.pickupDate), "MMM d")} ·{" "}
-                      {order.pickupTime}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">
-                      {order.itemCount}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">
-                      {formatPrice(order.total)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <OrderStatusSelect
-                        orderId={order.id}
-                        status={order.status}
-                      />
-                    </td>
-                  </tr>
-                ))
+                orders.map((order) => <OrderRow key={order.id} order={order} />)
               )}
             </tbody>
           </table>
