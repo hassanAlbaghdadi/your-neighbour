@@ -11,6 +11,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+const openCartMock = vi.fn();
+
 vi.mock("@/context/cart-context", () => ({
   useCart: () => ({
     items: [
@@ -22,16 +24,29 @@ vi.mock("@/context/cart-context", () => ({
         slug: "sourdough",
         price: 8,
         quantity: 1,
+        imageUrl: null,
       },
     ],
+    itemCount: 1,
     subtotal: 8,
     clearCart: clearCartMock,
+    openCart: openCartMock,
   }),
 }));
 
 vi.mock("@/app/actions/orders", () => ({
   createOrderAction: (...args: unknown[]) => createOrderActionMock(...args),
 }));
+
+// The form remembers a returning customer's contact details in
+// localStorage, so a test that places an order leaves the next one's form
+// pre-filled and passing validation it was written to fail. Cleared between
+// every test rather than only in the suites that care, because the leak is
+// silent: the form just submits, and the failure surfaces as a mock
+// returning undefined several tests later.
+beforeEach(() => {
+  window.localStorage.clear();
+});
 
 const settings: StoreSettings = {
   businessName: "Your Neighbour",
@@ -59,7 +74,11 @@ async function fillCheckoutForm() {
       );
     if (!day) throw new Error("Calendar has not finished loading yet");
     return day;
-  });
+    // Longer than the 1s default: this is waiting on a real dynamic import
+    // (next/dynamic, so the calendar stays out of checkout's first chunk),
+    // and under a full parallel test run that module resolution has been
+    // seen to take longer than a second.
+  }, { timeout: 5000 });
   fireEvent.click(firstEnabledDay);
 
   const slotButton = await screen.findByRole("button", { name: "11:59 PM" });
@@ -159,10 +178,12 @@ describe("CheckoutForm double-submit protection", () => {
       expect(createOrderActionMock).toHaveBeenCalledTimes(1),
     );
 
-    // Order summary renders both the line item and the total from the same
-    // numeric `price`/`subtotal` the cart context provides — asserting both
-    // guards against a future formatPrice refactor leaking into the payload.
-    expect(screen.getAllByText("$8.00")).toHaveLength(2);
+    // Order summary renders the figure from the same numeric
+    // `price`/`subtotal` the cart context provides — asserting it guards
+    // against a future formatPrice refactor leaking into the payload. Three
+    // surfaces now: the line item, the total, and the mobile disclosure row
+    // that keeps the total visible while the itemised list is collapsed.
+    expect(screen.getAllByText("$8.00")).toHaveLength(3);
   });
 
   it("submits the raw HH:mm slot even though the button shows 12-hour time", async () => {
@@ -261,7 +282,11 @@ async function pickDate() {
       );
     if (!day) throw new Error("Calendar has not finished loading yet");
     return day;
-  });
+    // Longer than the 1s default: this is waiting on a real dynamic import
+    // (next/dynamic, so the calendar stays out of checkout's first chunk),
+    // and under a full parallel test run that module resolution has been
+    // seen to take longer than a second.
+  }, { timeout: 5000 });
   fireEvent.click(firstEnabledDay);
 
   // Radix hands focus back to the trigger when the popover closes, and does
@@ -334,5 +359,200 @@ describe("CheckoutForm validation focus", () => {
     await submitAndSettle();
 
     expect(document.activeElement).toBe(screen.getByLabelText(/^email$/i));
+  });
+});
+
+describe("CheckoutForm error state", () => {
+  beforeEach(() => {
+    createOrderActionMock.mockReset();
+  });
+
+  async function submitAndSettle() {
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+    await waitFor(() =>
+      expect(screen.getAllByRole("alert").length).toBeGreaterThan(0),
+    );
+  }
+
+  it("clears the pickup date error once a date is chosen", async () => {
+    // setValue() without { shouldValidate: true } leaves the message on
+    // screen forever: the field reads "August 26th, 2026" with "Choose a
+    // pickup date" in red underneath it, and nothing the customer can do
+    // removes it. react-hook-form's reValidateMode only covers inputs it
+    // registered, and the date trigger is a button.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await submitAndSettle();
+    expect(screen.getByText("Choose a pickup date")).toBeInTheDocument();
+
+    await pickDate();
+
+    await waitFor(() =>
+      expect(screen.queryByText("Choose a pickup date")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("clears the pickup time error once a time is chosen", async () => {
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await pickDate();
+    await submitAndSettle();
+    expect(screen.getByText("Choose a pickup time")).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "11:59 PM" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Choose a pickup time")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("marks invalid fields with aria-invalid and points them at their message", async () => {
+    // register() sets neither, which left input.tsx's own
+    // aria-invalid:border-destructive styling as dead code — an invalid
+    // field looked exactly like a valid one — and left the error text
+    // unassociated, so focusing the field announced nothing about it.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await submitAndSettle();
+
+    const email = screen.getByLabelText(/^email$/i);
+    expect(email).toHaveAttribute("aria-invalid", "true");
+
+    const describedBy = email.getAttribute("aria-describedby");
+    expect(describedBy).toBe("customerEmail-error");
+    expect(document.getElementById(describedBy!)).toHaveTextContent(
+      "Enter a valid email address",
+    );
+  });
+
+  it("drops aria-invalid again once the field is corrected", async () => {
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await submitAndSettle();
+
+    const email = screen.getByLabelText(/^email$/i);
+    fireEvent.change(email, { target: { value: "jane@example.com" } });
+
+    await waitFor(() => expect(email).toHaveAttribute("aria-invalid", "false"));
+    expect(email).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("lands a server rejection on the field it names, and keeps it there", async () => {
+    // "That pickup date is fully booked" used to arrive as a toast: detached
+    // from the control at fault, and gone before a customer on a phone had
+    // finished reading it.
+    createOrderActionMock.mockResolvedValue({
+      success: false,
+      error: "That pickup date is fully booked. Please choose another day.",
+      field: "pickupDate",
+    });
+
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await fillCheckoutForm();
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+
+    const message = await screen.findByText(/fully booked/i);
+    expect(message).toBeInTheDocument();
+    // Against the date control, not floating somewhere else on the page.
+    expect(screen.getByRole("button", { name: /pickup date/i })).toHaveAttribute(
+      "aria-describedby",
+      "pickupDate-error",
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: /pickup date/i }),
+    );
+  });
+
+  it("shows a form-level alert when the rejection belongs to no single field", async () => {
+    // Rate limits and Stripe outages have nothing to point at, so they go
+    // above the submit button rather than being attached to an arbitrary
+    // control.
+    createOrderActionMock.mockResolvedValue({
+      success: false,
+      error: "That's a lot of orders in a short time.",
+    });
+
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await fillCheckoutForm();
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+
+    expect(await screen.findByText(/a lot of orders/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^email$/i)).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+  });
+});
+
+describe("CheckoutForm remembered customer", () => {
+  const STORAGE_KEY = "your-neighbour-customer";
+
+  beforeEach(() => {
+    createOrderActionMock.mockReset();
+  });
+
+  it("pre-fills contact details from a previous order", async () => {
+    // A repeat-purchase bakery on a 48-hour pre-order model lives on return
+    // customers, and browser autofill is unreliable in the in-app browsers
+    // Instagram traffic arrives in.
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        customerName: "Jane Doe",
+        customerEmail: "jane@example.com",
+        customerPhone: "9025550123",
+      }),
+    );
+
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/full name/i)).toHaveValue("Jane Doe"),
+    );
+    expect(screen.getByLabelText(/^email$/i)).toHaveValue("jane@example.com");
+    expect(screen.getByLabelText(/phone/i)).toHaveValue("9025550123");
+  });
+
+  it("lets someone else on the same phone clear them", async () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        customerName: "Jane Doe",
+        customerEmail: "jane@example.com",
+        customerPhone: "9025550123",
+      }),
+    );
+
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/full name/i)).toHaveValue("Jane Doe"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /not you/i }));
+
+    expect(screen.getByLabelText(/full name/i)).toHaveValue("");
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it("ignores a stored shape it doesn't recognise", async () => {
+    // A record written by an older build should be treated as absent, not
+    // spread into the form as undefined values.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ name: "Jane" }));
+
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+
+    expect(screen.getByLabelText(/full name/i)).toHaveValue("");
+    expect(screen.queryByText(/filled in from your last order/i)).toBeNull();
+  });
+
+  it("only remembers someone after an order is actually accepted", async () => {
+    createOrderActionMock.mockResolvedValue({
+      success: false,
+      error: "That pickup date is fully booked.",
+      field: "pickupDate",
+    });
+
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    await fillCheckoutForm();
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+
+    await screen.findByText(/fully booked/i);
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 });

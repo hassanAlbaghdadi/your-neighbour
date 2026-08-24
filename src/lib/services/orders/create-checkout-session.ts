@@ -2,15 +2,8 @@ import "server-only";
 import { headers } from "next/headers";
 import { getStripeClient } from "@/lib/stripe/client";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
+import { SESSION_HOLD_SECONDS } from "@/lib/checkout/session-hold";
 import type { OrderResult } from "@/lib/services/orders/create-order";
-
-// How long a pending order can hold its pickup-capacity slot before the
-// Stripe session expires and the webhook frees it again (see
-// cancel-expired-order.ts). Kept short — same-week pickup orders don't
-// need a 24h-default hold on a slot someone else might want — and 30
-// minutes is as short as it goes: Stripe rejects an `expires_at` less than
-// 30 minutes or more than 24 hours from creation.
-const SESSION_EXPIRY_SECONDS = 30 * 60;
 
 async function getBaseUrl(): Promise<string> {
   // A configured origin wins over the request's own headers. These URLs
@@ -61,7 +54,7 @@ export async function createCheckoutSessionForOrder(
     })),
     success_url: `${baseUrl}/confirmation/${order.id}`,
     cancel_url: `${baseUrl}/checkout`,
-    expires_at: Math.floor(Date.now() / 1000) + SESSION_EXPIRY_SECONDS,
+    expires_at: Math.floor(Date.now() / 1000) + SESSION_HOLD_SECONDS,
   }, {
     // Keyed on the order, which is itself client-generated and stable
     // across resubmits, so a retried action returns the session that

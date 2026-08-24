@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { useEffect } from "react";
 import { render, screen, within } from "@testing-library/react";
-import { CartProvider } from "@/context/cart-context";
+import { CartProvider, useCart } from "@/context/cart-context";
 import { CartDrawer } from "./cart-drawer";
 
 const STORAGE_KEY = "your-neighbour-cart";
@@ -28,11 +29,25 @@ const ITEMS = [
   },
 ];
 
+// The drawer reads its own open state from the cart context now (checkout
+// needs to open it too, so the header can't own it any more). Nothing in
+// the provider's public surface opens it on mount, so this flips it via the
+// same hook the header uses.
+function OpenOnMount() {
+  const { openCart } = useCart();
+  useEffect(() => {
+    openCart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 function renderDrawer() {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ITEMS));
   return render(
     <CartProvider>
-      <CartDrawer open onOpenChange={() => {}} minAdvanceHours={48} />
+      <OpenOnMount />
+      <CartDrawer minAdvanceHours={48} />
     </CartProvider>,
   );
 }

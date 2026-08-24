@@ -225,7 +225,12 @@ describe("processNewOrder", () => {
 
     await expect(
       processNewOrder({ ...baseInput, pickupTime: "03:00" }),
-    ).rejects.toThrow("Selected pickup time is no longer available.");
+    ).rejects.toThrow("That pickup time isn't available any more.");
+    // The field is what lets checkout render this against the time slots
+    // rather than in a toast that drifts away from them.
+    await expect(
+      processNewOrder({ ...baseInput, pickupTime: "03:00" }),
+    ).rejects.toMatchObject({ field: "pickupTime" });
   });
 
   it("refuses a pickup date the owner has blacked out", async () => {
@@ -236,8 +241,11 @@ describe("processNewOrder", () => {
     });
 
     await expect(processNewOrder(baseInput)).rejects.toThrow(
-      "We're closed for orders on the selected date.",
+      "We're closed for orders on that date.",
     );
+    await expect(processNewOrder(baseInput)).rejects.toMatchObject({
+      field: "pickupDate",
+    });
   });
 
   it("measures the lead time in the bakery's zone, not the host's", async () => {
@@ -261,8 +269,11 @@ describe("processNewOrder", () => {
     getSettingsMock.mockResolvedValue({ ...BASE_SETTINGS, minAdvanceHours: 48 });
 
     await expect(processNewOrder(baseInput)).rejects.toThrow(
-      "Orders require at least 48 hours notice",
+      "Orders need at least 48 hours' notice",
     );
+    await expect(processNewOrder(baseInput)).rejects.toMatchObject({
+      field: "pickupDate",
+    });
   });
 
   it("throws instead of returning a partial order when the RPC fails", async () => {
@@ -303,8 +314,11 @@ describe("processNewOrder", () => {
     });
 
     await expect(processNewOrder(baseInput)).rejects.toThrow(
-      "Sorry, that pickup date is fully booked. Please choose another date.",
+      "That pickup date is fully booked. Please choose another day.",
     );
+    await expect(processNewOrder(baseInput)).rejects.toMatchObject({
+      field: "pickupDate",
+    });
   });
 
   it("short-circuits via getExistingOrder without calling the RPC again", async () => {

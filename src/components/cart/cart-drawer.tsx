@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { ImageOff, Minus, Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -16,19 +17,25 @@ import {
 import { useCart } from "@/context/cart-context";
 import { MAX_ITEM_QUANTITY } from "@/lib/validations/order";
 import { formatPrice } from "@/lib/utils";
+import { track } from "@/lib/analytics";
 
 interface CartDrawerProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   minAdvanceHours: number;
 }
 
-export function CartDrawer({
-  open,
-  onOpenChange,
-  minAdvanceHours,
-}: CartDrawerProps) {
-  const { items, itemCount, subtotal, adjustQuantity, removeItem } = useCart();
+export function CartDrawer({ minAdvanceHours }: CartDrawerProps) {
+  // Checkout opens this same drawer as its "Edit order" affordance, so the
+  // footer has to stop describing checkout as something still ahead of them.
+  const onCheckout = usePathname() === "/checkout";
+  const {
+    items,
+    itemCount,
+    subtotal,
+    adjustQuantity,
+    removeItem,
+    cartOpen: open,
+    setCartOpen: onOpenChange,
+  } = useCart();
 
   useEffect(() => {
     if (open) toast.dismiss();
@@ -181,16 +188,33 @@ export function CartDrawer({
                 point the cart is committed, not just on a page they may
                 never have scrolled through. */}
             <p className="text-xs text-muted-foreground">
-              Pickup only — orders need {minAdvanceHours} hours’ notice.
-              You’ll pick a day and time next.
+              {onCheckout
+                ? "Change quantities here, then close to finish your order."
+                : `Pickup only — orders need ${minAdvanceHours} hours’ notice. You’ll pick a day and time next.`}
             </p>
             <div className="flex items-center justify-between text-base font-medium text-foreground">
               <span>Subtotal</span>
               <span>{formatPrice(subtotal)}</span>
             </div>
-            <Button asChild size="lg" onClick={() => onOpenChange(false)}>
-              <Link href="/checkout">Checkout</Link>
-            </Button>
+            {onCheckout ? (
+              <Button size="lg" onClick={() => onOpenChange(false)}>
+                Done
+              </Button>
+            ) : (
+              <Button
+                asChild
+                size="lg"
+                onClick={() => {
+                  track("begin_checkout", {
+                    value: subtotal,
+                    items: itemCount,
+                  });
+                  onOpenChange(false);
+                }}
+              >
+                <Link href="/checkout">Checkout</Link>
+              </Button>
+            )}
           </SheetFooter>
         )}
       </SheetContent>

@@ -6,7 +6,6 @@ import Image from "next/image";
 import { Menu as MenuIcon, ShoppingBag } from "lucide-react";
 import { InstagramIcon } from "@/components/icons/instagram-icon";
 import { Button } from "@/components/ui/button";
-import { CartDrawer } from "@/components/cart/cart-drawer";
 import {
   Sheet,
   SheetContent,
@@ -18,13 +17,8 @@ import { scrollToAnchor } from "@/lib/utils";
 import { track, trackOnce } from "@/lib/analytics";
 import { INSTAGRAM_URL } from "@/lib/social";
 
-interface SiteHeaderProps {
-  minAdvanceHours: number;
-}
-
-export function SiteHeader({ minAdvanceHours }: SiteHeaderProps) {
-  const { itemCount } = useCart();
-  const [cartOpen, setCartOpen] = useState(false);
+export function SiteHeader() {
+  const { itemCount, openCart } = useCart();
   const [navOpen, setNavOpen] = useState(false);
 
   // Funnel instrumentation only — nothing in the header renders off this.
@@ -123,7 +117,7 @@ export function SiteHeader({ minAdvanceHours }: SiteHeaderProps) {
               size="icon"
               className="relative"
               aria-label={`Open cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`}
-              onClick={() => setCartOpen(true)}
+              onClick={openCart}
             >
               <ShoppingBag />
               {itemCount > 0 && (
@@ -188,12 +182,6 @@ export function SiteHeader({ minAdvanceHours }: SiteHeaderProps) {
           </nav>
         </SheetContent>
       </Sheet>
-
-      <CartDrawer
-        open={cartOpen}
-        onOpenChange={setCartOpen}
-        minAdvanceHours={minAdvanceHours}
-      />
     </>
   );
 }
