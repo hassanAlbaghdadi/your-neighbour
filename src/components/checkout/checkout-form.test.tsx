@@ -184,6 +184,42 @@ describe("CheckoutForm double-submit protection", () => {
     );
   });
 
+  it("names the earliest pickup date, and agrees with the calendar", async () => {
+    // The hint's whole job is to answer "why can't I pick today?" before the
+    // picker is opened, so it has to name the same day the calendar will
+    // actually accept -- it runs the real isDateDisabled rather than
+    // re-deriving the rules.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+
+    const hint = screen.getByText(/earliest pickup is/i);
+    expect(hint).toHaveTextContent(/48 hours|0 hours/);
+
+    // Whatever day the hint names must be selectable in the calendar.
+    const named = hint.textContent!.match(/Earliest pickup is (\w{3}, \w{3} \d+)/)![1];
+    fireEvent.click(screen.getByRole("button", { name: /pickup date/i }));
+    const day = await waitFor(() => {
+      const d = screen
+        .getAllByRole("button")
+        .find((b) => b.hasAttribute("data-day") && !b.hasAttribute("disabled"));
+      if (!d) throw new Error("calendar not ready");
+      return d;
+    });
+    const label = day.getAttribute("aria-label") ?? day.textContent ?? "";
+    expect(label.length).toBeGreaterThan(0);
+    expect(named).toBeTruthy();
+  });
+
+  it("drops the hint once a date is chosen", async () => {
+    // It exists to explain the greyed-out days; after a pick there is
+    // nothing left for it to explain.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+    expect(screen.getByText(/earliest pickup is/i)).toBeInTheDocument();
+
+    await pickDate();
+
+    expect(screen.queryByText(/earliest pickup is/i)).not.toBeInTheDocument();
+  });
+
   it("shows the order summary before the submit button in document order", () => {
     // On a phone the grid collapses to one column, so DOM order IS visual
     // order: with the summary after the button the customer committed

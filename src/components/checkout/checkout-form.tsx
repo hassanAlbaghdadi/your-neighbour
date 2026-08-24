@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, isBefore, startOfDay } from "date-fns";
+import { addDays, format, isBefore, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/popover";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -132,6 +133,28 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     );
     return !hasValidSlot;
   }
+
+  /**
+   * The first date the calendar will actually accept.
+   *
+   * Same lazy-initializer pattern as minAllowed above, and for the same
+   * reason: `new Date()` is an impure read that React Compiler flags inside
+   * useMemo, and the answer can't change mid-checkout anyway.
+   *
+   * Deliberately runs the real isDateDisabled rather than re-deriving the
+   * rules -- a hint that disagreed with the picker underneath it would be
+   * worse than no hint. 60 days matches the window checkout/page.tsx loads
+   * orderCounts for; past that the counts are unknown, so a null just hides
+   * the line rather than guessing.
+   */
+  const [earliestAvailable] = useState<Date | null>(() => {
+    const start = startOfDay(new Date());
+    for (let offset = 0; offset < 60; offset += 1) {
+      const candidate = addDays(start, offset);
+      if (!isDateDisabled(candidate)) return candidate;
+    }
+    return null;
+  });
 
   const availableSlots = useMemo(() => {
     if (!selectedDate) return [];
@@ -313,6 +336,17 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
               />
             </PopoverContent>
           </Popover>
+          {/* Answers "why can't I pick today?" at the moment it's asked. The
+              48-hour rule is stated on the homepage and in the cart footer,
+              but neither is on screen here -- so the first three days simply
+              appeared greyed with no reason given. Hidden once a date is
+              chosen, when it has nothing left to explain. */}
+          {!selectedDate && earliestAvailable && (
+            <FieldDescription>
+              Earliest pickup is {format(earliestAvailable, "EEE, MMM d")} —
+              orders need {settings.minAdvanceHours} hours&rsquo; notice.
+            </FieldDescription>
+          )}
           <FieldError errors={[errors.pickupDate]} />
         </Field>
 
