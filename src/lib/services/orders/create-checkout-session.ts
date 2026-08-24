@@ -48,6 +48,30 @@ export async function createCheckoutSessionForOrder(
 
   const session = await getStripeClient().checkout.sessions.create({
     mode: "payment",
+    // Pinned to card rather than left for Stripe to manage from the
+    // Dashboard's payment-method settings. Two things that decision buys:
+    //
+    // 1. Apple Pay and Google Pay ride on "card" automatically -- Stripe
+    //    shows them as buttons above the card form whenever the customer's
+    //    own browser/device supports a wallet, no separate type needed. So
+    //    this doesn't trade wallets away; it's the documented fix when a
+    //    wallet isn't rendering even though the account supports it
+    //    (docs.stripe.com/testing/wallets, "Enable wallets for your
+    //    integration"), because it stops depending on whatever the
+    //    Dashboard's Dynamic Payment Methods toggle happens to be set to.
+    // 2. It keeps the actual payment page to card + wallets only. Without
+    //    this, any other method later switched on in the Dashboard for an
+    //    unrelated reason (a BNPL option, a bank redirect, ...) would
+    //    appear here too -- on a same-day local pickup order, those are
+    //    friction, not choice.
+    //
+    // What this can't fix: a customer's own device or browser not
+    // supporting a wallet (Safari never shows Google Pay; Chrome needs a
+    // card saved to a signed-in Google account and "allow sites to check
+    // for payment methods" turned on; neither wallet renders in a private/
+    // incognito window). That's real device state, not something either
+    // Stripe or this code can override.
+    payment_method_types: ["card"],
     customer_email: order.customerEmail,
     client_reference_id: order.id,
     metadata: { order_id: order.id },

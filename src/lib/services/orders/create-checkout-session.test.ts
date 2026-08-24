@@ -66,6 +66,7 @@ describe("createCheckoutSessionForOrder", () => {
     expect(createSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: "payment",
+        payment_method_types: ["card"],
         customer_email: order.customerEmail,
         client_reference_id: order.id,
         metadata: { order_id: order.id },
@@ -107,6 +108,26 @@ describe("createCheckoutSessionForOrder", () => {
     expect(fromMock).toHaveBeenCalledWith("orders");
     expect(updateMock).toHaveBeenCalledWith({ stripe_checkout_session_id: "cs_test_123" });
     expect(eqMock).toHaveBeenCalledWith("id", order.id);
+  });
+
+  it("pins payment methods to card rather than leaving them to the Dashboard", async () => {
+    // Apple Pay and Google Pay ride on "card" automatically -- Stripe shows
+    // them as buttons whenever the customer's device supports a wallet, no
+    // separate type needed. Passing this explicitly is the documented fix
+    // for a wallet not rendering even though the account supports it
+    // (Dynamic Payment Methods otherwise decides this from Dashboard
+    // config, which nothing here can see or test against), and it keeps
+    // the actual payment page to card + wallets even if something else
+    // gets switched on in the Dashboard later.
+    createSessionMock.mockResolvedValue({
+      id: "cs_test_123",
+      url: "https://checkout.stripe.com/cs_test_123",
+    });
+
+    await createCheckoutSessionForOrder(order);
+
+    const [params] = createSessionMock.mock.calls[0] as [{ payment_method_types: string[] }];
+    expect(params.payment_method_types).toEqual(["card"]);
   });
 
   it("throws when Stripe doesn't return a checkout url", async () => {
