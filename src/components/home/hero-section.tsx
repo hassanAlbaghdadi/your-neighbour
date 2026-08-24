@@ -46,9 +46,22 @@ export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
           <h1 className="max-w-lg font-heading text-4xl font-semibold text-cream-50 sm:text-5xl">
             Fresh, baked to order
           </h1>
+          {/* KEEP THIS UNDER 80 CHARACTERS. At 343px/16px the budget is
+              ~40 chars a line, so 80 is the last length that still sets as
+              two lines on a phone. A third line raises the top of this text
+              block from 64% of the hero to ~61%, which lifts it out of the
+              >=70% band the scrim above is sized for and into the part that
+              fades — the 1.12:1-against-a-white-upload failure that comment
+              describes. Shorten the copy; don't reach for the gradient.
+
+              This used to sell pre-ordering and pickup, which the founder
+              band states outright 123px below, and freshness, which the h1
+              above already says. So it named everything about the shop
+              except the thing being sold — and the page had to spend three
+              lines above the menu doing that instead. Now the h1 carries
+              freshness and this carries what it actually is. */}
           <p className="mt-4 max-w-md text-base text-cream-50/95 sm:text-lg">
-            Pre-order your favorites for local pickup — baked fresh the
-            morning you pick up.
+            Soft bread stuffed with cream cheese, soaked in sugar syrup.
           </p>
           <Button asChild size="lg" className="mt-7">
             <Link href="#menu" onClick={(e) => scrollToAnchor(e, "menu")}>

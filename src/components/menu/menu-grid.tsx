@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/menu/product-card";
 import { trackOnce } from "@/lib/analytics";
-import { sharedAllergens, formatAllergenProse } from "@/lib/allergens";
 import type { Category, Product } from "@/lib/services/products/get-products";
 
 interface MenuGridProps {
@@ -12,6 +11,12 @@ interface MenuGridProps {
   products: Product[];
   /** Derived from real order history; null when there's no defensible winner. */
   mostPopularId: string | null;
+  /**
+   * Allergens every product shares, stated once in the menu intro in
+   * page.tsx and subtracted from each card's line here. Computed there
+   * rather than here so the whole intro block is written in one place.
+   */
+  sharedAllergens: string[];
 }
 
 /**
@@ -30,17 +35,10 @@ export function MenuGrid({
   categories,
   products,
   mostPopularId,
+  sharedAllergens: shared,
 }: MenuGridProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-
-  // Stated once here rather than on all six cards. Returns nothing unless
-  // every product declares the allergen, so the claim can only ever be true
-  // of the whole menu -- see lib/allergens.ts for the fail-safes.
-  const shared = useMemo(
-    () => sharedAllergens(products.map((product) => product.allergens)),
-    [products],
-  );
 
   const filtered = useMemo(() => {
     if (!activeCategory) return products;
@@ -63,12 +61,13 @@ export function MenuGrid({
     return () => observer.disconnect();
   }, []);
 
-  // pt-2 rather than a symmetric py-8: the allergen note below is the third
-  // line of the menu's intro copy, and the other two live in page.tsx's
-  // header block. A full py-8 here put a 32px seam between paragraphs that
-  // sit 8px apart, splitting one block of prose into two.
+  // pt-3, not pt-6 or pt-8: the last thing above this grid is the allergen
+  // meta row in page.tsx, which is a legend for these cards rather than a
+  // paragraph that happens to precede them. It has to sit nearer the grid it
+  // describes than the heading it sits under, or it reads as trailing intro
+  // copy -- which is exactly what it stopped being.
   return (
-    <div ref={rootRef} className="mx-auto w-full max-w-6xl px-4 pt-2 pb-8 sm:px-6">
+    <div ref={rootRef} className="mx-auto w-full max-w-6xl px-4 pt-3 pb-8 sm:px-6">
       {SHOW_CATEGORY_FILTER && (
         <div className="mb-8 flex flex-wrap gap-2">
           <Button
@@ -89,13 +88,6 @@ export function MenuGrid({
             </Button>
           ))}
         </div>
-      )}
-
-      {shared.length > 0 && (
-        <p className="mb-6 text-sm text-muted-foreground">
-          Everything on the menu contains {formatAllergenProse(shared)}. Each
-          item lists anything further below it.
-        </p>
       )}
 
       {filtered.length === 0 ? (
