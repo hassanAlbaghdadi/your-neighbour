@@ -4,6 +4,7 @@ import { getOrders } from "@/lib/services/orders/get-orders";
 import { getBakingSummary } from "@/lib/services/orders/get-baking-summary";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
 import { PageHeader } from "@/components/admin/page-header";
+import { StatTile } from "@/components/admin/stat-tile";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, resolveSummaryDate } from "@/lib/utils";
 import { businessToday } from "@/lib/time";
@@ -45,14 +46,19 @@ export default async function AdminOrdersPage({
     today,
   );
 
-  const [orders, bakingSummary] = await Promise.all([
+  const [orders, bakingSummary, todaysOrders] = await Promise.all([
     getOrders(
       filter === "today"
         ? { pickupDate: today }
         : { status: STATUS_BY_FILTER[filter] },
     ),
     getBakingSummary(summaryDate),
+    getOrders({ pickupDate: today }),
   ]);
+
+  const todaysOrderCount = todaysOrders.length;
+  const pendingCount = todaysOrders.filter((o) => o.status === "Pending").length;
+  const todaysRevenue = todaysOrders.reduce((sum, o) => sum + o.total, 0);
 
   const prevDate = format(subDays(parseISO(summaryDate), 1), "yyyy-MM-dd");
   const nextDate = format(addDays(parseISO(summaryDate), 1), "yyyy-MM-dd");
@@ -63,6 +69,12 @@ export default async function AdminOrdersPage({
         title="Orders"
         description="Review pickups and manage order status."
       />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile label="Today's Orders" value={String(todaysOrderCount)} />
+        <StatTile label="Pending" value={String(pendingCount)} accent="primary" />
+        <StatTile label="Today's Revenue" value={formatPrice(todaysRevenue)} accent="secondary" />
+      </div>
 
       <section className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
