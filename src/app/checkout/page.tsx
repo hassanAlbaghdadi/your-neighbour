@@ -26,9 +26,6 @@ export default async function CheckoutPage() {
       <h1 className="font-heading text-2xl font-semibold text-foreground sm:text-3xl">
         Checkout
       </h1>
-      <p className="mt-1.5 text-muted-foreground">
-        Pick a pickup date and time, then tell us how to reach you.
-      </p>
 
       <CheckoutForm settings={settings} orderCounts={orderCounts} />
     </div>

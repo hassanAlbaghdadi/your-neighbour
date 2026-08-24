@@ -60,9 +60,13 @@ export function OrderSummary() {
             aria-hidden="true"
           />
         </span>
-        <span className="text-sm font-semibold text-foreground tabular-nums">
-          {formatPrice(subtotal)}
-        </span>
+        {/* Hidden once open: the Total row two lines below says the same
+            thing. Collapsed, this is the only place the figure appears. */}
+        {!expanded && (
+          <span className="text-sm font-semibold text-foreground tabular-nums">
+            {formatPrice(subtotal)}
+          </span>
+        )}
       </button>
 
       <div
@@ -112,13 +116,14 @@ export function OrderSummary() {
           <span className="tabular-nums">{formatPrice(subtotal)}</span>
         </div>
 
-        {/* The Stripe session sets no automatic tax and there is no delivery,
-            so this figure really is final. Saying so is free — the customer
-            is otherwise left to assume a tax line is waiting on the next
-            screen, which is the single most common reason a cart is
-            abandoned at exactly this point. */}
+        {/* The Stripe session sets no automatic tax and there is no
+            delivery, so the total above really is final. Saying so is free —
+            the customer is otherwise left assuming a tax line waits on the
+            next screen, which is the most common reason a cart is abandoned
+            at exactly this point. Deliberately doesn't reprint the figure:
+            it is already directly above, and on the button. */}
         <p className="mt-2 text-xs text-muted-foreground">
-          No tax or delivery fees — {formatPrice(subtotal)} is the final total.
+          No tax or delivery fees — this is the final price.
         </p>
       </div>
     </aside>

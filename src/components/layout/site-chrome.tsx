@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { CheckoutHeader } from "@/components/layout/checkout-header";
-import { CheckoutFooter } from "@/components/layout/checkout-footer";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 
 interface SiteChromeProps {
@@ -45,12 +44,12 @@ export function SiteChrome({
 
       <main className="flex flex-1 flex-col">{children}</main>
 
-      {isCheckout ? (
-        <CheckoutFooter
-          businessName={businessName}
-          contactEmail={contactEmail}
-        />
-      ) : (
+      {/* Checkout gets no footer at all. The assurance block directly above
+          the submit button already carries the Stripe reassurance and the
+          contact address, and it sits where they are actually read; a footer
+          restating both below the CTA was noise at the moment of commitment.
+          The page ending on the button is the point. */}
+      {!isCheckout && (
         <SiteFooter
           businessName={businessName}
           contactEmail={contactEmail}

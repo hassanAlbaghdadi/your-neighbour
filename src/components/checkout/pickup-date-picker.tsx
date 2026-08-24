@@ -53,7 +53,11 @@ interface PickupDatePickerProps {
  * exist. Second, every unavailable day used to render as identical grey: too
  * soon, blacked out and fully booked were indistinguishable, so a customer
  * whose birthday was greyed out had no way to tell a rule from a bug. "Full"
- * is now called out, and the legend says what the greys mean.
+ * is called out with a strikethrough rather than a paragraph of legend —
+ * the "Earliest pickup is ..." hint under the trigger already accounts for
+ * the common case, and a block of explanatory text inside a `w-auto`
+ * popover stretched the desktop calendar to two and a half times its own
+ * width.
  */
 export function PickupDatePicker({
   selectedDate,
@@ -105,13 +109,6 @@ export function PickupDatePicker({
     />
   );
 
-  const legend = (
-    <p className="px-3 pb-3 text-xs text-muted-foreground">
-      Struck-through days are fully booked. Other greyed days are either
-      before our lead time or days we&rsquo;re closed.
-    </p>
-  );
-
   if (isMobile) {
     return (
       <>
@@ -120,15 +117,14 @@ export function PickupDatePicker({
           <SheetContent
             side="bottom"
             // max() rather than the bare env(): the safe-area inset is 0 on
-            // most devices, which left the legend flush against the bottom
-            // edge of the screen.
+            // most devices, which left the last row of days flush against
+            // the bottom edge of the screen.
             className="max-h-[85svh] overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]"
           >
             <SheetHeader>
               <SheetTitle>Choose a pickup date</SheetTitle>
             </SheetHeader>
             <div className="flex justify-center px-2">{calendar}</div>
-            {legend}
           </SheetContent>
         </Sheet>
       </>
@@ -138,10 +134,7 @@ export function PickupDatePicker({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        {calendar}
-        {legend}
-      </PopoverContent>
+      <PopoverContent className="w-auto p-0">{calendar}</PopoverContent>
     </Popover>
   );
 }
