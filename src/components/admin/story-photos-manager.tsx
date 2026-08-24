@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { ExistingPhotoPicker } from "@/components/admin/existing-photo-picker";
 import { useExistingPhotos } from "@/lib/hooks/use-existing-photos";
 import { usePhotoUpload } from "@/lib/hooks/use-photo-upload";
@@ -74,11 +75,13 @@ function SinglePhotoEditor({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="font-heading text-lg font-semibold text-foreground">{title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="relative aspect-4/3 w-full max-w-56 shrink-0 overflow-hidden rounded-lg bg-muted">
           {photo?.image_url && (
             <Image
@@ -131,7 +134,8 @@ function SinglePhotoEditor({
           {uploading && <p className="text-sm text-muted-foreground">Uploading…</p>}
         </div>
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function AdminDashboardError({
   error,
@@ -15,7 +16,7 @@ export default function AdminDashboardError({
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card p-8 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300 motion-safe:ease-out">
+    <Card className="flex flex-col items-center gap-4 p-8 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300 motion-safe:ease-out">
       <h1 className="font-heading text-lg font-semibold text-foreground">
         Something went wrong
       </h1>
@@ -24,6 +25,6 @@ export default function AdminDashboardError({
         available from the nav above.
       </p>
       <Button onClick={() => reset()}>Try again</Button>
-    </div>
+    </Card>
   );
 }

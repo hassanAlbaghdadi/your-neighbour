@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { ExistingPhotoPicker } from "@/components/admin/existing-photo-picker";
 import { PhotoListItemCard } from "@/components/admin/photo-list-item-card";
 import { useExistingPhotos } from "@/lib/hooks/use-existing-photos";
@@ -69,14 +70,16 @@ function HeroPhotoEditor({ initialHero }: { initialHero: HomepagePhoto | null })
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="font-heading text-lg font-semibold text-foreground">Hero photo</h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Shown at the top of the homepage. Leave unset and it automatically
-        uses the first product photo in your menu.
-      </p>
-
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold">Hero photo</CardTitle>
+        <CardDescription>
+          Shown at the top of the homepage. Leave unset and it automatically
+          uses the first product photo in your menu.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="relative aspect-4/3 w-full max-w-56 shrink-0 overflow-hidden rounded-lg bg-muted">
           {hero?.image_url && (
             <Image
@@ -129,7 +132,8 @@ function HeroPhotoEditor({ initialHero }: { initialHero: HomepagePhoto | null })
           {uploading && <p className="text-sm text-muted-foreground">Uploading…</p>}
         </div>
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -211,14 +215,16 @@ function GalleryPhotosEditor({ initialGallery }: { initialGallery: HomepagePhoto
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="font-heading text-lg font-semibold text-foreground">Photo gallery</h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Shown further down the homepage. Leave empty and it automatically
-        fills in with your product photos.
-      </p>
-
-      <div className="mt-4 flex flex-col gap-3">
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold">Photo gallery</CardTitle>
+        <CardDescription>
+          Shown further down the homepage. Leave empty and it automatically
+          fills in with your product photos.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+      <div className="flex flex-col gap-3">
         {gallery.map((photo, index) => (
           <PhotoListItemCard
             key={photo.id}
@@ -248,7 +254,8 @@ function GalleryPhotosEditor({ initialGallery }: { initialGallery: HomepagePhoto
         <Plus className="inline size-3" /> Add a photo via upload or from your
         existing product photos.
       </p>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
