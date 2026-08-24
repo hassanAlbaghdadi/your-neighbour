@@ -73,7 +73,7 @@ export default async function ConfirmationPage(
                 href={`https://maps.google.com/?q=${encodeURIComponent(settings.pickupAddress)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary underline underline-offset-4"
+                className="text-link underline underline-offset-4"
               >
                 Open in maps
               </a>
@@ -131,7 +131,7 @@ export default async function ConfirmationPage(
                 href={`mailto:${settings.contactEmail}?subject=${encodeURIComponent(
                   `Order #${order.id.slice(0, 8)}`,
                 )}`}
-                className="text-primary underline underline-offset-4"
+                className="text-link underline underline-offset-4"
               >
                 {settings.contactEmail}
               </a>
