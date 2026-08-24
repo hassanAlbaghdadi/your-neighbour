@@ -67,9 +67,11 @@ export function SettingsForm({ settings }: { settings: StoreSettings }) {
             placeholder="12 Example St, Halifax NS B3K 1A1"
             {...register("pickupAddress")}
           />
-          {/* Shown to the customer at checkout, on the confirmation page and
-              in their receipt, with a map link built from it. Left empty,
-              those blocks are hidden rather than rendered blank. */}
+          <p className="text-xs text-muted-foreground">
+            Shown to the customer at checkout, on the confirmation page, and
+            in their receipt, with a map link built from it. Leave it empty
+            and those sections are hidden rather than shown blank.
+          </p>
           <FieldError errors={[errors.pickupAddress]} />
         </Field>
 
