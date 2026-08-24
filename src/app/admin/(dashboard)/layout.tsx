@@ -9,7 +9,7 @@ export default function AdminDashboardLayout({
 }) {
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b border-border bg-card">
+      <header className="border-b border-border bg-card print:hidden">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:py-0 sm:px-6">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span className="font-heading text-lg font-semibold text-foreground">

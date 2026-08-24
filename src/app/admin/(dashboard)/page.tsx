@@ -5,6 +5,7 @@ import { getBakingSummary } from "@/lib/services/orders/get-baking-summary";
 import { OrderRow } from "@/components/admin/order-row";
 import { PageHeader } from "@/components/admin/page-header";
 import { StatTile } from "@/components/admin/stat-tile";
+import { PrintButton } from "@/components/admin/print-button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, resolveSummaryDate } from "@/lib/utils";
 import { businessToday } from "@/lib/time";
@@ -65,18 +66,20 @@ export default async function AdminOrdersPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        title="Orders"
-        description="Review pickups and manage order status."
-      />
+      <div className="print:hidden">
+        <PageHeader
+          title="Orders"
+          description="Review pickups and manage order status."
+        />
+      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 print:hidden">
         <StatTile label="Today's Orders" value={String(todaysOrderCount)} />
         <StatTile label="Pending" value={String(pendingCount)} accent="primary" />
         <StatTile label="Today's Revenue" value={formatPrice(todaysRevenue)} accent="secondary" />
       </div>
 
-      <section className="rounded-xl border border-border bg-card p-6">
+      <section className="rounded-xl border border-border bg-card p-6 print:border-0 print:p-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-heading text-lg font-semibold text-foreground">
             Daily Baking Summary
@@ -84,7 +87,7 @@ export default async function AdminOrdersPage({
           <div className="flex items-center gap-3 text-sm">
             <Link
               href={`/admin?filter=${filter}&summaryDate=${prevDate}`}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground print:hidden"
               aria-label="Previous day"
             >
               ←
@@ -94,11 +97,12 @@ export default async function AdminOrdersPage({
             </span>
             <Link
               href={`/admin?filter=${filter}&summaryDate=${nextDate}`}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground print:hidden"
               aria-label="Next day"
             >
               →
             </Link>
+            <PrintButton />
           </div>
         </div>
 
@@ -128,7 +132,7 @@ export default async function AdminOrdersPage({
         )}
       </section>
 
-      <section>
+      <section className="print:hidden">
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((f) => (
             <Badge

@@ -21,7 +21,7 @@ export function SiteFooter({
   const year = new Date().getFullYear();
 
   return (
-    <footer className="bg-espresso-900 text-cream-50">
+    <footer className="bg-espresso-900 text-cream-50 print:hidden">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 sm:flex-row sm:items-start sm:justify-between sm:px-6">
         <div>
           <Link href="/" className="flex items-center gap-2.5">
