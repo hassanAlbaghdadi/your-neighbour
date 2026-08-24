@@ -6,6 +6,17 @@ import { X, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { createCategoryAction, deleteCategoryAction } from "@/app/actions/categories";
 import { slugify } from "@/lib/utils";
 import type { Category } from "@/lib/services/products/get-products";
@@ -48,14 +59,33 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
         {categories.map((category) => (
           <Badge key={category.id} variant="outline" className="gap-1 py-1">
             {category.name}
-            <button
-              type="button"
-              onClick={() => handleDelete(category.id)}
-              disabled={deletingId === category.id}
-              aria-label={`Delete ${category.name}`}
-            >
-              <X className="size-3" />
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  disabled={deletingId === category.id}
+                  aria-label={`Delete ${category.name}`}
+                >
+                  <X className="size-3" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {category.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This can&apos;t be undone. Products in this category
+                    won&apos;t be deleted, but they&apos;ll lose their
+                    category.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleDelete(category.id)}>
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </Badge>
         ))}
       </div>
