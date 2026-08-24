@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
-import { productFormSchema } from "@/lib/validations/product";
+import { productFormSchema, productReorderInputSchema } from "@/lib/validations/product";
 import {
   createProduct,
   updateProduct,
   deleteProduct,
   setProductAvailability,
   setVariantAvailability,
+  reorderProducts,
   ProductError,
 } from "@/lib/services/products/manage-products";
 import type { ActionResult } from "@/types/action-result";
@@ -112,5 +113,26 @@ export async function setVariantAvailabilityAction(
   } catch (error) {
     console.error("setVariantAvailabilityAction failed:", error);
     return { success: false, error: "Failed to update availability." };
+  }
+}
+
+export async function reorderProductsAction(
+  orderedIds: string[],
+): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { success: false, error: "Unauthorized" };
+
+  const parsed = productReorderInputSchema.safeParse({ orderedIds });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid order." };
+  }
+
+  try {
+    await reorderProducts(parsed.data.orderedIds);
+    revalidatePath("/admin/products");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("reorderProductsAction failed:", error);
+    return { success: false, error: "Failed to reorder products." };
   }
 }

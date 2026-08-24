@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,7 @@ import {
   deleteProductAction,
   setProductAvailabilityAction,
   setVariantAvailabilityAction,
+  reorderProductsAction,
 } from "@/app/actions/products";
 import { formatPrice } from "@/lib/utils";
 import type {
@@ -44,12 +45,34 @@ export function ProductTable({
   products: Product[];
   categories: Category[];
 }) {
+  const [orderedProducts, setOrderedProducts] = useState(products);
+  const [, startTransition] = useTransition();
+
+  function handleMove(index: number, direction: -1 | 1) {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= orderedProducts.length) return;
+
+    const previous = orderedProducts;
+    const reordered = [...orderedProducts];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    setOrderedProducts(reordered);
+
+    startTransition(async () => {
+      const result = await reorderProductsAction(reordered.map((p) => p.id));
+      if (!result.success) {
+        setOrderedProducts(previous);
+        toast.error(result.error ?? "Failed to reorder products.");
+      }
+    });
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border border-border">
       <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-muted text-left text-muted-foreground">
           <tr>
+            <th className="w-8 px-2 py-2" aria-hidden />
             <th className="w-8 px-2 py-2" aria-hidden />
             <th className="px-4 py-2 font-medium">Name</th>
             <th className="px-4 py-2 font-medium">Category</th>
@@ -59,15 +82,22 @@ export function ProductTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border bg-card">
-          {products.length === 0 ? (
+          {orderedProducts.length === 0 ? (
             <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+              <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                 No products yet.
               </td>
             </tr>
           ) : (
-            products.map((product) => (
-              <ProductRow key={product.id} product={product} categories={categories} />
+            orderedProducts.map((product, index) => (
+              <ProductRow
+                key={product.id}
+                product={product}
+                categories={categories}
+                index={index}
+                total={orderedProducts.length}
+                onMove={handleMove}
+              />
             ))
           )}
         </tbody>
@@ -80,9 +110,15 @@ export function ProductTable({
 function ProductRow({
   product,
   categories,
+  index,
+  total,
+  onMove,
 }: {
   product: Product;
   categories: Category[];
+  index: number;
+  total: number;
+  onMove: (index: number, direction: -1 | 1) => void;
 }) {
   const [available, setAvailable] = useState(product.is_available);
   const [isPending, startTransition] = useTransition();
@@ -126,6 +162,32 @@ function ProductRow({
               {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
             </button>
           )}
+        </td>
+        <td className="px-2 py-3">
+          <div className="flex flex-col">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-5"
+              disabled={index === 0}
+              onClick={() => onMove(index, -1)}
+              aria-label="Move product up"
+            >
+              <ArrowUp className="size-3" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-5"
+              disabled={index === total - 1}
+              onClick={() => onMove(index, 1)}
+              aria-label="Move product down"
+            >
+              <ArrowDown className="size-3" />
+            </Button>
+          </div>
         </td>
         <td className="px-4 py-3 font-medium text-foreground">{product.name}</td>
         <td className="px-4 py-3 text-muted-foreground">
@@ -202,6 +264,7 @@ function VariantRow({ variant }: { variant: ProductVariant }) {
 
   return (
     <tr className="bg-muted/40">
+      <td className="px-2 py-2" />
       <td className="px-2 py-2" />
       <td className="px-4 py-2 pl-8 text-muted-foreground" colSpan={2}>
         {variant.label}

@@ -149,6 +149,15 @@ export async function setVariantAvailability(
   }
 }
 
+export async function reorderProducts(orderedIds: string[]): Promise<void> {
+  const supabase = await createClient();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase.from("products").update({ display_order: index }).eq("id", id),
+    ),
+  );
+}
+
 export async function deleteProduct(id: string): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.from("products").delete().eq("id", id);
