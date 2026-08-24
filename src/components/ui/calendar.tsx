@@ -31,7 +31,13 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        "group/calendar bg-background p-2 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(7)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
+        // --cell-size drives day cells, month-nav arrows and weekday headers
+      // alike. shadcn ships spacing(7) = 28px, which is a mouse-first
+      // number: on a phone it lands under the 44px target floor this
+      // codebase commits to in button.tsx, on the one control a customer
+      // has to hit before anything else in checkout. 44px below sm,
+      // 36px from sm up where a pointer is doing the work.
+      "group/calendar bg-background p-2 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(11)] sm:[--cell-size:--spacing(9)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className

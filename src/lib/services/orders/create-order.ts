@@ -3,12 +3,30 @@ import { z } from "zod";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
 import { getSettings } from "@/lib/services/settings/get-settings";
 import { pickupInstant } from "@/lib/time";
-import type { CreateOrderInput } from "@/lib/validations/order";
+import type {
+  CheckoutFieldName,
+  CreateOrderInput,
+} from "@/lib/validations/order";
 import type { OrderStatus, PaymentStatus } from "@/types/database";
 
 const uuidSchema = z.string().uuid();
 
-export class OrderError extends Error {}
+/**
+ * A rejection the customer can act on, as opposed to a bug.
+ *
+ * `field` names the control they need to change, so checkout can render the
+ * message against that control and leave it there until it's resolved.
+ * Errors with no single field to blame — an unavailable item, which is a
+ * cart problem — leave it null and surface above the submit button.
+ */
+export class OrderError extends Error {
+  readonly field: CheckoutFieldName | null;
+
+  constructor(message: string, field: CheckoutFieldName | null = null) {
+    super(message);
+    this.field = field;
+  }
+}
 
 export interface OrderResultItem {
   productName: string;
@@ -43,11 +61,17 @@ export async function processNewOrder(
   const settings = await getSettings();
 
   if (!settings.pickupTimeSlots.includes(input.pickupTime)) {
-    throw new OrderError("Selected pickup time is no longer available.");
+    throw new OrderError(
+      "That pickup time isn't available any more. Please choose another.",
+      "pickupTime",
+    );
   }
 
   if (settings.blackoutDates.includes(input.pickupDate)) {
-    throw new OrderError("We're closed for orders on the selected date.");
+    throw new OrderError(
+      "We're closed for orders on that date. Please choose another day.",
+      "pickupDate",
+    );
   }
 
   const pickupDateTime = pickupInstant(input.pickupDate, input.pickupTime);
@@ -56,7 +80,8 @@ export async function processNewOrder(
   );
   if (pickupDateTime < minAllowed) {
     throw new OrderError(
-      `Orders require at least ${settings.minAdvanceHours} hours notice. Please choose a later pickup date or time.`,
+      `Orders need at least ${settings.minAdvanceHours} hours' notice. Please choose a later pickup date or time.`,
+      "pickupDate",
     );
   }
 
@@ -76,7 +101,8 @@ export async function processNewOrder(
   }
   if ((count ?? 0) >= settings.maxOrdersPerDay) {
     throw new OrderError(
-      "Sorry, that pickup date is fully booked. Please choose another date.",
+      "That pickup date is fully booked. Please choose another day.",
+      "pickupDate",
     );
   }
 
@@ -167,7 +193,8 @@ export async function processNewOrder(
   );
   if (orderError?.message === "CAPACITY_FULL") {
     throw new OrderError(
-      "Sorry, that pickup date is fully booked. Please choose another date.",
+      "That pickup date is fully booked. Please choose another day.",
+      "pickupDate",
     );
   }
   if (orderError || !order) {

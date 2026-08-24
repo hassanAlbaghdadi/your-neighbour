@@ -36,6 +36,7 @@
   --color-espresso-50: #f5f2f1;
   --color-espresso-100: #e6dedb;
   --color-espresso-300: #a99089;
+  --color-espresso-400: #9d837c;
   --color-espresso-500: #6b4f47;
   --color-espresso-700: #40312c;
   --color-espresso-900: #2a211d; /* brand base */
@@ -66,6 +67,14 @@
   --primary-hover: var(--color-terracotta-700);
   --primary-foreground: var(--color-white);
 
+  /* Inline text links, split out of --primary rather than darkening it.
+     terracotta-600 carries white text at 4.70:1 (fine as a button fill),
+     but as *text on cream* it only reaches 4.44:1 — just under the 4.5:1
+     AA floor for body copy. terracotta-700 reads at 6.10:1 on cream while
+     leaving every button fill in the app untouched. */
+  --link: var(--color-terracotta-700);
+  --link-hover: var(--color-terracotta-800);
+
   --secondary: var(--color-sage-700);
   --secondary-hover: var(--color-sage-800);
   --secondary-foreground: var(--color-white);
@@ -80,7 +89,13 @@
   --destructive-foreground: var(--color-white);
 
   --border: #e8dfd3;
-  --input: #e8dfd3;
+  /* Was #e8dfd3 — the same hairline as --border, which measured 1.24:1
+     against the page. WCAG 1.4.11 asks for 3:1 on the boundary of a UI
+     component, and a checkout form whose fields you cannot see is the
+     practical version of that rule. espresso-400 reads 3.32:1 on cream and
+     3.52:1 on the white fill the inputs now carry. --border stays put:
+     card edges and dividers are decoration, not controls. */
+  --input: var(--color-espresso-400);
   --ring: var(--color-terracotta-500);
 
   /* ---- SEMANTIC: Radius ---- */
@@ -106,6 +121,9 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
 
   --color-secondary: var(--secondary);
   --color-secondary-hover: var(--secondary-hover);
@@ -150,6 +168,7 @@
   --color-espresso-50: var(--color-espresso-50);
   --color-espresso-100: var(--color-espresso-100);
   --color-espresso-300: var(--color-espresso-300);
+  --color-espresso-400: var(--color-espresso-400);
   --color-espresso-500: var(--color-espresso-500);
   --color-espresso-700: var(--color-espresso-700);
   --color-espresso-900: var(--color-espresso-900);

@@ -1,12 +1,12 @@
 import { format, addDays } from "date-fns";
 import { getSettings } from "@/lib/services/settings/get-settings";
 import { getOrderCountsByDate } from "@/lib/services/orders/get-order-counts";
-import { MapPin } from "lucide-react";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
+import { AVAILABILITY_WINDOW_DAYS } from "@/lib/checkout/pickup-availability";
 
 export default async function CheckoutPage() {
   const today = new Date();
-  const rangeEnd = addDays(today, 60);
+  const rangeEnd = addDays(today, AVAILABILITY_WINDOW_DAYS);
 
   const [settings, orderCounts] = await Promise.all([
     getSettings(),
@@ -17,36 +17,15 @@ export default async function CheckoutPage() {
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="font-heading text-3xl font-semibold text-foreground">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
+      {/* text-2xl on mobile, not text-3xl. Combined with dropping the
+          pickup-address card into the form (where it answers a question the
+          customer has just asked, rather than one they haven't yet), this
+          moves the first thing they can actually touch onto the first
+          screen instead of 558px down it. */}
+      <h1 className="font-heading text-2xl font-semibold text-foreground sm:text-3xl">
         Checkout
       </h1>
-      <p className="mt-2 text-muted-foreground">
-        Pick a pickup date and time, then tell us how to reach you.
-      </p>
-
-      {/* Before the form, not after it. Pickup-only means "where do I
-          collect this?" is a question the customer needs answered while
-          deciding whether to pay -- not once they already have. */}
-      {settings.pickupAddress && (
-        <div className="mt-6 flex items-start gap-2 rounded-xl border border-border bg-card p-4 text-sm">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          <div>
-            <p className="text-muted-foreground">Pickup address</p>
-            <p className="font-medium text-foreground">
-              {settings.pickupAddress}
-            </p>
-            <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(settings.pickupAddress)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline underline-offset-4"
-            >
-              Open in maps
-            </a>
-          </div>
-        </div>
-      )}
 
       <CheckoutForm settings={settings} orderCounts={orderCounts} />
     </div>

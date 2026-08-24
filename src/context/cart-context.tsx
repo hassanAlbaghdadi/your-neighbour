@@ -24,6 +24,15 @@ interface CartContextValue {
   // clobbered when the hydration effect's setItems(parsedData) lands after
   // it, since child effects commit before their parent's.
   hydrated: boolean;
+  /**
+   * Whether the cart drawer is showing. Owned here rather than by the
+   * header that renders it, because the drawer is the only place quantities
+   * can be changed — and checkout, which is where a wrong quantity actually
+   * costs someone money, needs to be able to open it too.
+   */
+  cartOpen: boolean;
+  setCartOpen: (open: boolean) => void;
+  openCart: () => void;
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
@@ -36,6 +45,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -125,6 +135,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems([]);
   }
 
+  function openCart() {
+    setCartOpen(true);
+  }
+
   const itemCount = useMemo(
     () => items.reduce((sum, i) => sum + i.quantity, 0),
     [items],
@@ -139,6 +153,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     itemCount,
     subtotal,
     hydrated,
+    cartOpen,
+    setCartOpen,
+    openCart,
     addItem,
     removeItem,
     updateQuantity,

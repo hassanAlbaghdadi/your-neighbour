@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Work_Sans } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/cart-context";
-import { SiteHeader } from "@/components/layout/site-header";
-import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteChrome } from "@/components/layout/site-chrome";
 import { Toaster } from "@/components/ui/sonner";
 import { getCategories } from "@/lib/services/products/get-products";
 import { getSettings } from "@/lib/services/settings/get-settings";
@@ -39,13 +38,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         <CartProvider>
-          <SiteHeader minAdvanceHours={settings.minAdvanceHours} />
-          <main className="flex flex-1 flex-col">{children}</main>
-          <SiteFooter
+          <SiteChrome
+            minAdvanceHours={settings.minAdvanceHours}
             businessName={settings.businessName}
             contactEmail={settings.contactEmail}
             categories={categories}
-          />
+          >
+            {children}
+          </SiteChrome>
         </CartProvider>
         <Toaster />
       </body>

@@ -10,6 +10,10 @@ import type { OrderResult } from "@/lib/services/orders/create-order";
 // need a 24h-default hold on a slot someone else might want — and 30
 // minutes is as short as it goes: Stripe rejects an `expires_at` less than
 // 30 minutes or more than 24 hours from creation.
+//
+// Back here rather than in a shared module: it was briefly lifted out so
+// checkout could quote the number to the customer, and that sentence is
+// gone. Nothing outside this file needs it.
 const SESSION_EXPIRY_SECONDS = 30 * 60;
 
 async function getBaseUrl(): Promise<string> {

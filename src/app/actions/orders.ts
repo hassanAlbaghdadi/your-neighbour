@@ -37,9 +37,14 @@ export async function createOrderAction(
 ): Promise<ActionResult<CreateOrderResult>> {
   const parsed = createOrderInputSchema.safeParse(payload);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return {
       success: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid order details.",
+      error: issue?.message ?? "Invalid order details.",
+      // The browser validates the same schema first, so reaching here means
+      // the two disagreed. Still name the field: it costs nothing and beats
+      // a form that reports a problem it won't point at.
+      field: typeof issue?.path[0] === "string" ? issue.path[0] : undefined,
     };
   }
 
@@ -86,7 +91,11 @@ export async function createOrderAction(
     }
   } catch (error) {
     if (error instanceof OrderError) {
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message,
+        field: error.field ?? undefined,
+      };
     }
     console.error("createOrderAction failed:", error);
     return {
