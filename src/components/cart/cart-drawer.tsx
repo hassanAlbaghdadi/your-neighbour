@@ -64,13 +64,30 @@ export function CartDrawer({
                       the order before payment, the photo is the fastest way
                       to catch the wrong one. */}
                   <div className="relative size-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                    {/* Sized rather than `fill`, and requested at 112 for a
+                        box that paints at 56.
+
+                        `fill` makes next/image emit the whole candidate
+                        ladder (32w ... 3840w). The product card has already
+                        fetched the same photo at 750w, so the browser reuses
+                        that cached candidate rather than refetching a small
+                        one -- reasonable of it, but it leaves a 48KB JPEG
+                        being decoded into a 56px box, six times over.
+
+                        112 rather than 56 because a sized image only gets 1x
+                        and 2x candidates: asking for 56 caps the ladder at
+                        128w, which a DPR-3 phone upscales into a
+                        168-device-pixel box and renders permanently soft.
+                        112 moves it to 128w/256w, so 3x screens get a sharp
+                        candidate and the transfer is still ~3KB instead of
+                        48KB. `size-full` keeps it painted at 56 CSS px. */}
                     {item.imageUrl ? (
                       <Image
                         src={item.imageUrl}
                         alt=""
-                        fill
-                        sizes="56px"
-                        className="object-cover"
+                        width={112}
+                        height={112}
+                        className="size-full object-cover"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center text-muted-foreground">
