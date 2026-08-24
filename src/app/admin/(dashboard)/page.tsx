@@ -3,6 +3,7 @@ import { format, addDays, subDays, parseISO } from "date-fns";
 import { getOrders } from "@/lib/services/orders/get-orders";
 import { getBakingSummary } from "@/lib/services/orders/get-baking-summary";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
+import { PageHeader } from "@/components/admin/page-header";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, resolveSummaryDate } from "@/lib/utils";
 import { businessToday } from "@/lib/time";
@@ -58,6 +59,11 @@ export default async function AdminOrdersPage({
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        title="Orders"
+        description="Review pickups and manage order status."
+      />
+
       <section className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-heading text-lg font-semibold text-foreground">

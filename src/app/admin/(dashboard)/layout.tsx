@@ -1,14 +1,6 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/app/actions/auth";
-
-const NAV_LINKS = [
-  { href: "/admin", label: "Orders" },
-  { href: "/admin/products", label: "Products" },
-  { href: "/admin/homepage", label: "Homepage" },
-  { href: "/admin/our-story", label: "Our Story" },
-  { href: "/admin/settings", label: "Settings" },
-];
+import { AdminNav } from "@/components/admin/admin-nav";
 
 export default function AdminDashboardLayout({
   children,
@@ -23,17 +15,7 @@ export default function AdminDashboardLayout({
             <span className="font-heading text-lg font-semibold text-foreground">
               Your Neighbour <span className="text-muted-foreground">Admin</span>
             </span>
-            <nav className="flex flex-wrap items-center gap-4">
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+            <AdminNav />
           </div>
           <form action={signOutAction}>
             <Button type="submit" variant="outline" size="sm">

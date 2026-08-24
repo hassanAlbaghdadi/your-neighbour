@@ -2,6 +2,7 @@ import { getCategories, getProducts } from "@/lib/services/products/get-products
 import { CategoryManager } from "@/components/admin/category-manager";
 import { ProductTable } from "@/components/admin/product-table";
 import { ProductFormDialog } from "@/components/admin/product-form-dialog";
+import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
@@ -13,14 +14,7 @@ export default async function AdminProductsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold text-foreground">
-          Products
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Manage your menu and categories.
-        </p>
-      </div>
+      <PageHeader title="Products" description="Manage your menu and categories." />
 
       <section>
         <h2 className="font-heading text-lg font-semibold text-foreground">
