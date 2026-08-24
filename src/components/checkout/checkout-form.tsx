@@ -26,7 +26,6 @@ import { createOrderAction } from "@/app/actions/orders";
 import { cn, formatPrice } from "@/lib/utils";
 import { pickupInstant, formatPickupTime } from "@/lib/time";
 import { track, trackOnce } from "@/lib/analytics";
-import { SESSION_HOLD_MINUTES } from "@/lib/checkout/session-hold";
 import {
   createDateStatusResolver,
   findEarliestAvailable,
@@ -580,10 +579,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
           <FieldError id="notes-error" errors={[errors.notes]} />
         </Field>
 
-        <CheckoutAssurance
-          contactEmail={settings.contactEmail}
-          holdMinutes={SESSION_HOLD_MINUTES}
-        />
+        <CheckoutAssurance contactEmail={settings.contactEmail} />
 
         {formError && (
           <div
