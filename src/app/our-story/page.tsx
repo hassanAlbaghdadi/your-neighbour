@@ -38,33 +38,57 @@ export default async function OurStoryPage() {
     <div className="flex flex-1 flex-col">
       <StoryHero photo={heroPhoto} />
 
+      {/* Each beat now carries a real heading rather than an oversized
+          opening sentence doing double duty as one -- the copy this
+          replaces gave every beat a distinct title, and previously the
+          page's only heading was the h1 in the hero. Body copy runs at one
+          weight underneath it, rather than picking one paragraph to render
+          large: beat2 below has only one paragraph, and singling out a
+          "big" line among 1-2 would have made it look thin next to beats
+          with two. */}
       <NarrativeBeat photo={beat1Photo} imagePosition="right" background="cream">
-        <p className="font-heading text-xl leading-relaxed text-foreground sm:text-2xl">
-          Your Neighbour started the way most good things do — at home, with family, friends, and a lot of baking.
+        <h2 className="font-heading text-2xl font-semibold text-foreground sm:text-3xl">
+          A recipe passed down
+        </h2>
+        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+          Your Neighbour started with a recipe, a childhood memory, and a
+          little taste of home.
         </p>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Sarah started baking on weekends because, for her, food has always been a way of showing love.
-          It was how she made people feel at home, especially after moving to Canada.
-          Before long, family and friends started asking for a pan of their own. Then another. And another.
+          Sarah grew up helping her mum make Khaliat El Nahal, a Yemeni
+          honeycomb bread filled with cream cheese and finished with a sweet
+          syrup. It was the kind of food that brought everyone to the table —
+          and a recipe that became part of her childhood.
         </p>
       </NarrativeBeat>
 
       <NarrativeBeat photo={beat2Photo} imagePosition="left" background="ivory">
-        <p className="font-heading text-xl leading-relaxed text-foreground sm:text-2xl">
-          There was never a plan to open a bakery.
-          Just an oven that kept getting used a little more, and a love for making something from scratch and sharing it with the people around her.
-        </p>
+        <h2 className="font-heading text-2xl font-semibold text-foreground sm:text-3xl">
+          A little piece of home
+        </h2>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          After a lot of convincing, Your Neighbour was born — a small, homegrown bakery with a simple mission: to spread love through food, bring people together, and build connections with our neighbours, local businesses, and communities.
+          When Sarah moved to Canada, she found herself missing it deeply.
+          So she kept making it — again and again — until she perfected the
+          recipe. What started as a way to recreate the comfort of home
+          became something she wanted to share.
         </p>
       </NarrativeBeat>
 
       <NarrativeBeat photo={beat3Photo} imagePosition="right" background="cream">
-        <p className="font-heading text-xl leading-relaxed text-foreground sm:text-2xl">
-          Nothing here comes from a wholesale supplier or a walk-in freezer.
+        <h2 className="font-heading text-2xl font-semibold text-foreground sm:text-3xl">
+          From our home to yours
+        </h2>
+        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+          Our food is a reflection of where Sarah comes from. The honeycomb
+          bread comes from her Yemeni roots, while our Karak tea is made with
+          Kenyan tea leaves, a nod to the other side of her family and the
+          tea she grew up with.
         </p>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Every order starts with simple ingredients, a little patience, and a whole lot of care — made in the same kitchen where you pick it up.
+          What started as something Sarah made for herself, then for family
+          and friends, eventually became Your Neighbour — a small homegrown
+          bakery with a simple mission: to spread love through food, share a
+          little piece of where we come from, and bring people together.
         </p>
       </NarrativeBeat>
 
