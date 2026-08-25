@@ -20,9 +20,9 @@ const ITEMS = [
   {
     productId: "p2",
     variantId: "v2",
-    name: "A Little Mix",
+    name: "Mix Box",
     variantLabel: "6 Mix Pieces",
-    slug: "a-little-mix",
+    slug: "mix-box",
     price: 25,
     quantity: 1,
     imageUrl: null,
@@ -84,7 +84,7 @@ describe("CartDrawer", () => {
       await screen.findByRole("button", { name: /remove cheesecake, 9" pan/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /remove a little mix, 6 mix pieces/i }),
+      screen.getByRole("button", { name: /remove mix box, 6 mix pieces/i }),
     ).toBeInTheDocument();
   });
 
