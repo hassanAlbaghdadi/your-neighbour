@@ -51,10 +51,6 @@ export default async function OurStoryPage() {
           A recipe passed down
         </h2>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Your Neighbour started with a recipe, a childhood memory, and a
-          little taste of home.
-        </p>
-        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           Sarah grew up helping her mum make Khaliat El Nahal, a Yemeni
           honeycomb bread filled with cream cheese and finished with a sweet
           syrup. It was the kind of food that brought everyone to the table —
@@ -69,8 +65,7 @@ export default async function OurStoryPage() {
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           When Sarah moved to Canada, she found herself missing it deeply.
           So she kept making it — again and again — until she perfected the
-          recipe. What started as a way to recreate the comfort of home
-          became something she wanted to share.
+          recipe.
         </p>
       </NarrativeBeat>
 
@@ -87,8 +82,7 @@ export default async function OurStoryPage() {
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           What started as something Sarah made for herself, then for family
           and friends, eventually became Your Neighbour — a small homegrown
-          bakery with a simple mission: to spread love through food, share a
-          little piece of where we come from, and bring people together.
+          bakery.
         </p>
       </NarrativeBeat>
 

@@ -20,9 +20,9 @@ const workSans = Work_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Your Neighbour | Fresh Baked Goods, Pre-Ordered",
+  title: "Your Neighbour | Khaliat El Nahal, baked to order",
   description:
-    "A warm, community-focused online ordering platform for pre-ordering fresh baked goods for local pickup.",
+    "Sarah's kitchen in the North End — Yemeni honeycomb bread, made to order for local pickup.",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
