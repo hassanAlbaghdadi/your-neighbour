@@ -379,10 +379,9 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
               "everything's baked to order" rather than "orders need N hours'
               notice": the same fact, given as the reason someone is buying
               here instead of a supermarket rather than as a restriction. It
-              also echoes the homepage h1 ("Fresh, baked to order") without
-              spending "fresh" on them a third time, and it stops the line
-              depending on minAdvanceHours -- which is owner-configurable, so
-              the old copy had to stay accurate through a settings change. */}
+              also stops the line depending on minAdvanceHours -- which is
+              owner-configurable, so the old copy had to stay accurate
+              through a settings change. */}
           {!selectedDate && earliestAvailable && (
             <FieldDescription>
               Earliest pickup is {format(earliestAvailable, "EEE, MMM d")} —

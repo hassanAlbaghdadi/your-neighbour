@@ -55,9 +55,9 @@ export default async function HomePage() {
               was written that line was saying a third thing nobody needed:
               the heading already names the section, the sentence already
               says what we bake, and "What" opened both of them two lines
-              apart. It also put a third "bake" within one screen of the h1
-              ("Fresh, baked to order") and the founder band ("Baked by
-              Sarah"), all in the loudest small-text treatment on the page.
+              apart. It also put a second "bake" within one screen of the
+              founder band ("Baked by Sarah"), in the loudest small-text
+              treatment on the page.
 
               This is the same call product-card.tsx made when it dropped
               the category eyebrow: a label that repeats what's next to it
