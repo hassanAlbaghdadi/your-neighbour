@@ -49,8 +49,22 @@ export function FounderNote({ minAdvanceHours }: FounderNoteProps) {
   return (
     <section ref={ref} className="border-b border-border bg-cream-50">
       <div className="mx-auto flex max-w-2xl flex-col items-center gap-1.5 px-4 py-6 text-center sm:px-6">
+        {/* "her mum's recipe" is the only inheritance claim on the
+            homepage, and it's free: one line on desktop and two on a phone,
+            exactly like the copy without it, and it fills the phone's
+            second line 88% where the old one ran 34% with "at a time"
+            stranded.
+
+            It stays this short on purpose. Spelled out ("with a recipe
+            passed down from her mum") it runs to three lines on a phone and
+            two on desktop, which turns this band into a paragraph and
+            undoes the one-band decision above. It would also restate Our
+            Story's opening beat, which is titled "A recipe passed down" --
+            three words here point at that page; a sentence here replaces
+            it. */}
         <p className="font-heading text-base text-espresso-700">
-          Baked by Sarah in the North End — one small batch at a time.
+          Baked by Sarah in the North End — her mum&apos;s recipe, one small
+          batch at a time.
         </p>
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Clock className="size-3.5 shrink-0 text-terracotta-600" />

@@ -43,8 +43,28 @@ export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
 
       <div className="relative flex h-full items-end">
         <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
+          {/* "Fresh, baked to order" before this, which is a specification,
+              not a voice — it would have fit any bakery in any country, and
+              it left a shop called Your Neighbour with nothing on its
+              largest text that a neighbour would say. The functional half
+              of it survives elsewhere: the band below carries the lead time
+              and the small batches, and nothing here sits on a shelf
+              anyway.
+
+              "Home" is the word the rest of the site keeps reaching for on
+              its own -- Our Story runs a whole beat titled "A little piece
+              of home" -- and it's the one idea that lands on a first read
+              for someone who has never heard of this bread and for someone
+              who grew up on it. That matters in Canada specifically, but
+              it needs no translating anywhere.
+
+              HARD LIMIT ~22 CHARACTERS. At text-5xl in a max-w-lg column
+              that is the ceiling for a single line on desktop; past it the
+              h1 wraps and drags the whole text block from 65% of the hero
+              up to 58%, out of the >=70% band the scrim is sized for.
+              Every candidate at 24 chars and up failed this, measured. */}
           <h1 className="max-w-lg font-heading text-4xl font-semibold text-cream-50 sm:text-5xl">
-            Fresh, baked to order
+            A little taste of home
           </h1>
           {/* KEEP THIS UNDER 80 CHARACTERS. At 343px/16px the budget is
               ~40 chars a line, so 80 is the last length that still sets as
@@ -57,11 +77,45 @@ export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
               This used to sell pre-ordering and pickup, which the founder
               band states outright 123px below, and freshness, which the h1
               above already says. So it named everything about the shop
-              except the thing being sold — and the page had to spend three
-              lines above the menu doing that instead. Now the h1 carries
-              freshness and this carries what it actually is. */}
+              except the thing being sold.
+
+              It then carried the recipe — "soft bread stuffed with cream
+              cheese, soaked in sugar syrup" — which has since moved to the
+              menu intro, where the same words do a second job the hero
+              can't: they factor out the opening every card shares, so the
+              grid reads as variations rather than six unrelated items. It
+              only earns that reading next to the cards. Repeating it here
+              would spend the largest text on the page saying what the
+              reader is about to be told again 700px lower.
+
+              What's left for this line is the one fact nothing else on the
+              homepage states: what the food is called and where it's from.
+              The menu intro says what it's made of and the founder band
+              says who bakes it and how to buy -- neither names it. Our
+              Story does, but that's a page most visitors never open, so the
+              name lands here or nowhere.
+
+              "made to pull apart and share" is doing the harder half of
+              that job. A transliteration plus a category ("Yemeni honeycomb
+              bread.") is precise and inert: it tells a reader who already
+              knows this bread that we have it, and tells everyone else a
+              label they can't picture. Pulling it apart is the part anyone
+              can picture without a translation, and sharing is what the
+              thing is actually for -- Our Story ends on bringing people
+              together, and this is the only line on the homepage that acts
+              like it.
+
+              It costs nothing to say: 72 chars is inside the 80 above, it
+              still sets as two lines on a phone, and it repairs a wrap
+              defect in the old copy, whose second line ran 14% full with
+              "bread." stranded on it alone. Now 88%/84%.
+
+              Don't add the Karak tea from Our Story to this line: it's part
+              of Sarah's story, not the menu. Every product on the grid
+              below is this bread. */}
           <p className="mt-4 max-w-md text-base text-cream-50/95 sm:text-lg">
-            Soft bread stuffed with cream cheese, soaked in sugar syrup.
+            Khaliat El Nahal — Yemeni honeycomb bread, made to pull apart and
+            share.
           </p>
           <Button asChild size="lg" className="mt-7">
             <Link href="#menu" onClick={(e) => scrollToAnchor(e, "menu")}>

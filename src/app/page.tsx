@@ -51,29 +51,74 @@ export default async function HomePage() {
 
       <section id="menu" className="scroll-mt-16">
         <div className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6">
-          {/* Not "Order ahead" any more. Once the band above states the
-              terms outright, that eyebrow sat 77px below the words "Order 48
-              hours ahead" in the loudest small-text treatment on the page and
-              said them again. The eyebrow/heading pair is kept because the
-              gallery below uses the same one ("From the kitchen" / "A closer
-              look") -- dropping it here alone would leave the two sections
-              looking like they came from different pages. */}
-          <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
-            What we bake
-          </p>
-          <h2 className="mt-2 font-heading text-2xl font-semibold text-foreground sm:text-3xl">
+          {/* No eyebrow. It read "What we bake", and once the lead below
+              was written that line was saying a third thing nobody needed:
+              the heading already names the section, the sentence already
+              says what we bake, and "What" opened both of them two lines
+              apart. It also put a third "bake" within one screen of the h1
+              ("Fresh, baked to order") and the founder band ("Baked by
+              Sarah"), all in the loudest small-text treatment on the page.
+
+              This is the same call product-card.tsx made when it dropped
+              the category eyebrow: a label that repeats what's next to it
+              costs a line and returns nothing.
+
+              The gallery below keeps its own ("From the kitchen" / "A
+              closer look") because that one carries information its
+              heading doesn't -- whose kitchen. Parity was the argument for
+              keeping this one, but the two sections stopped being twins the
+              moment this one grew lead copy the gallery doesn't have, and
+              2,500px of grid sits between them.
+
+              What's left is three elements with three jobs: where you are,
+              what it is, what to watch for. */}
+          <h2 className="font-heading text-2xl font-semibold text-foreground sm:text-3xl">
             The Menu
           </h2>
-          {/* The recipe line that used to sit here is in the hero subhead
-              now. Its original job -- factoring the shared opening out of
-              six card descriptions that all began "Soft Bread Stuffed w/
-              Cream Cheese Mix..." -- is finished: every description now
-              leads with its own difference, so nothing was being deduped
-              any more. What was left was a definition of the product, and a
-              definition belongs at the top of the page, not three lines
-              above the grid on the reader's second screen.
+          {/* One sentence, and it's the one that changes how the grid
+              below is read. Every card leads with its own difference now
+              ("No coating, no drizzle", "Rolled in cinnamon sugar",
+              "Chocolate chips right through the filling"), which is right
+              for scanning but leaves a first-time reader six items with no
+              common ground -- the thing they all are went unsaid anywhere
+              near the cards. This states the shared base once, then hands
+              off: what's left to compare is the finish, which is exactly
+              what each card leads with.
 
-              A menu-wide allergen note, though, can't move anywhere. It's
+              One sentence at one measure (max-w-lg: 2 lines on desktop,
+              3 on a phone) on purpose. Anything longer stops reading as a
+              caption on the grid and starts reading as an About paragraph
+              standing between the reader and the menu -- the failure this
+              section already had once, when three consecutive paragraphs
+              sat here.
+
+              The payoff clause is the only part in foreground weight, and
+              whitespace-nowrap keeps it whole. It's the instruction
+              ("compare the finishes"); the setup is context and can stay
+              muted, so the line resolves in one glance without getting
+              longer. Two weights, no extra words. Deleting the clause
+              saves nothing, measured: at both widths the sentence wraps to
+              the same line count either way, and without it that last line
+              sits 12% full with "syrup." orphaned on it.
+
+              "pillow-soft", not "soft, pillowy": those are two words for
+              one attribute, which is the same padding as "a sweet sugar
+              syrup" for something sweet by definition. One compound word
+              buys the texture and keeps both desktop lines 100% full;
+              adding a second adjective ("golden, pillow-soft") tips desktop
+              to three lines with the last 19% full. Measured at 375 and
+              1280.
+
+              The hero deliberately does not repeat this -- see the note in
+              hero-section.tsx. */}
+          <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Every treat starts the same way — pillow-soft bread stuffed with
+            cream cheese, soaked in sugar syrup.{" "}
+            <span className="font-medium whitespace-nowrap text-foreground">
+              What changes is the finish.
+            </span>
+          </p>
+          {/* A menu-wide allergen note, though, can't move anywhere. It's
               the one line here where being easy to skip is the defect, so
               it stays visible -- no disclosure, no tap. What changes is that
               it stops being set as prose. Two sentences in the same grey as
@@ -104,7 +149,7 @@ export default async function HomePage() {
               Renders nothing at all when the menu shares no allergen; see
               lib/allergens.ts for why that can happen. */}
           {shared.length > 0 && (
-            <p className="mt-6 flex items-start gap-1.5 text-xs text-muted-foreground">
+            <p className="mt-5 flex items-start gap-1.5 text-xs text-muted-foreground">
               <Info className="mt-px size-3.5 shrink-0 text-terracotta-600" />
               <span>
                 All items contain {formatAllergenProse(shared)}{" "}
