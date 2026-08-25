@@ -94,7 +94,7 @@ export function SiteFooter({
 
       <div className="border-t border-cream-50/10 px-4 py-4 sm:px-6">
         <p className="mx-auto max-w-6xl text-xs text-cream-50/50">
-          © {year} {businessName}. Local pickup only.
+          © {year} {businessName}
         </p>
       </div>
     </footer>

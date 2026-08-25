@@ -10,8 +10,8 @@ export function StoryCta() {
             That’s the whole story. Now, what can we bake for you?
           </p>
           <p className="mx-auto mt-3 max-w-md text-sm text-cream-50/80 sm:text-base">
-            Orders need a little lead time — place yours ahead and it’ll
-            be fresh out of the oven when you pick it up.
+            Order ahead and it’ll be fresh out of the oven when you pick
+            it up.
           </p>
           <Button asChild size="lg" className="mt-7">
             <Link href="/#menu">See the menu</Link>

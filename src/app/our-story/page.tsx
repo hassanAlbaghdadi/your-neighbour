@@ -52,9 +52,9 @@ export default async function OurStoryPage() {
         </h2>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           Sarah grew up helping her mum make Khaliat El Nahal, a Yemeni
-          honeycomb bread filled with cream cheese and finished with a sweet
-          syrup. It was the kind of food that brought everyone to the table —
-          and a recipe that became part of her childhood.
+          honeycomb bread filled with cream cheese and finished with syrup.
+          It was the kind of food that brought everyone to the table — and a
+          recipe that became part of her childhood.
         </p>
       </NarrativeBeat>
 
