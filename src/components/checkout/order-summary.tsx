@@ -4,6 +4,12 @@ import { useState } from "react";
 import Image from "next/image";
 import { ChevronDown, ImageOff, Pencil } from "lucide-react";
 import { useCart } from "@/context/cart-context";
+import {
+  SERVICE_FEE_RATE_LABEL,
+  calculateOrderTotals,
+  fromCents,
+  toCents,
+} from "@/lib/pricing/order-totals";
 import { cn, formatPrice } from "@/lib/utils";
 
 /**
@@ -24,6 +30,15 @@ import { cn, formatPrice } from "@/lib/utils";
 export function OrderSummary() {
   const { items, itemCount, subtotal, openCart } = useCart();
   const [expanded, setExpanded] = useState(false);
+
+  // Same function the server runs in create-order.ts, over the same cents,
+  // so the figure on this screen is the figure Stripe charges rather than
+  // a second implementation that agrees with it most of the time. Purely
+  // for display — the server recomputes all of it from the database and
+  // never trusts a number that came from here.
+  const { feeCents, totalCents } = calculateOrderTotals(toCents(subtotal));
+  const serviceFee = fromCents(feeCents);
+  const total = fromCents(totalCents);
 
   return (
     <aside className="h-fit rounded-xl border border-border bg-card p-4 sm:p-5 lg:sticky lg:top-20 lg:order-2">
@@ -60,11 +75,14 @@ export function OrderSummary() {
             aria-hidden="true"
           />
         </span>
-        {/* Hidden once open: the Total row two lines below says the same
-            thing. Collapsed, this is the only place the figure appears. */}
+        {/* Hidden once open: the Total row below says the same thing.
+            Collapsed, this is the only place the figure appears — so it has
+            to be the total, fee included. Showing the subtotal here would
+            make the one number a phone customer sees the one number that
+            isn't what they pay. */}
         {!expanded && (
           <span className="text-sm font-semibold text-foreground tabular-nums">
-            {formatPrice(subtotal)}
+            {formatPrice(total)}
           </span>
         )}
       </button>
@@ -111,19 +129,37 @@ export function OrderSummary() {
           ))}
         </ul>
 
-        <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-base font-medium text-foreground">
-          <span>Total</span>
-          <span className="tabular-nums">{formatPrice(subtotal)}</span>
+        {/* Itemised rather than rolled into one figure. The fee is small
+            enough that hiding it saves nothing and costs the "why is this
+            more than the menu said" email — and the percentage next to the
+            dollar amount is what shows it was calculated rather than
+            invented. Stripe's own page itemises it identically one screen
+            later (see create-checkout-session.ts), so there is no number
+            waiting there that the customer hasn't already agreed to. */}
+        <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 text-sm">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span>Subtotal</span>
+            <span className="tabular-nums">{formatPrice(subtotal)}</span>
+          </div>
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span>{SERVICE_FEE_RATE_LABEL}</span>
+            <span className="tabular-nums">{formatPrice(serviceFee)}</span>
+          </div>
+          <div className="flex items-center justify-between text-base font-medium text-foreground">
+            <span>Total</span>
+            <span className="tabular-nums">{formatPrice(total)}</span>
+          </div>
         </div>
 
-        {/* The Stripe session sets no automatic tax and there is no
-            delivery, so the total above really is final. Saying so is free —
-            the customer is otherwise left assuming a tax line waits on the
-            next screen, which is the most common reason a cart is abandoned
-            at exactly this point. Deliberately doesn't reprint the figure:
-            it is already directly above, and on the button. */}
+        {/* Still worth saying, and still the same job it did before: the
+            customer is otherwise left assuming a tax line waits on the next
+            screen, which is the most common reason a cart is abandoned at
+            exactly this point. Reworded because the old copy ("No tax or
+            delivery fees — this is the final price") stopped being true the
+            moment a fee appeared above it. Deliberately doesn't reprint the
+            figure: it is already directly above, and on the button. */}
         <p className="mt-2 text-xs text-muted-foreground">
-          No tax or delivery fees — this is the final price.
+          No tax or delivery — the total above is what you&rsquo;ll pay.
         </p>
       </div>
     </aside>

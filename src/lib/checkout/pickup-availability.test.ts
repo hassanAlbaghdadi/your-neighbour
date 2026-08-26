@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { format } from "date-fns";
 import {
   createDateStatusResolver,
@@ -20,6 +20,31 @@ const BASE: StoreSettings = {
 // DST boundary in America/Halifax, which pickupInstant resolves against.
 const NOW = new Date("2026-08-23T12:00:00-03:00");
 const minAllowed = new Date(NOW.getTime() + 48 * 60 * 60 * 1000);
+
+// Pinning `minAllowed` above was only ever half the job, and the missing
+// half was a time bomb rather than a flake: createDateStatusResolver reads
+// `new Date()` itself for its `past` check, before the lead-time and
+// capacity branches it is being tested on. So every date literal here
+// quietly depended on the suite being run before 2026-08-24 — and once
+// that day passed, two tests started getting a correct "past" back for a
+// day they meant to be merely too-soon.
+//
+// Freezing the clock to the same NOW those literals were written against
+// is what makes them mean again what they say. Editing them to new future
+// dates would only re-arm it.
+//
+// `toFake: ["Date"]` and not the whole timer suite, matching
+// create-order.test.ts: this file is synchronous today, but faking timers
+// wholesale stalls awaited promises, so the narrow form is the one that
+// stays safe if an async case is added here later.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW);
+});
+
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 function resolver(overrides: Partial<StoreSettings> = {}, counts = {}) {
   return createDateStatusResolver({

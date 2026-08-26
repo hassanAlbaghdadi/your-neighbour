@@ -1,6 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 import { formatPrice } from "@/lib/utils";
+import { SERVICE_FEE_LABEL } from "@/lib/pricing/order-totals";
 import type { OrderResult } from "@/lib/services/orders/create-order";
 import type { StoreSettings } from "@/lib/services/settings/get-settings";
 import { formatPickupDate, formatPickupTime } from "@/lib/time";
@@ -59,6 +60,31 @@ function formatItemsList(items: OrderResult["items"]): string {
 }
 
 /**
+ * The money, itemised the same way checkout itemised it.
+ *
+ * A receipt that jumps straight to a total the customer can't reconcile
+ * against the prices they picked is the one that generates the "why was I
+ * charged more than I ordered" email — so the fee is named here in the
+ * same words it was named in at checkout, not folded silently into the
+ * total.
+ *
+ * Tested `> 0` rather than `<= 0`, so anything that isn't a real positive
+ * fee falls through to the plain Total. The polarity is the whole point:
+ * `undefined <= 0` and `NaN <= 0` are both false, so the inverted form
+ * would take the itemised branch on a malformed order and mail a customer
+ * a receipt reading "Service fee: $NaN". A missing fee line is recoverable;
+ * that is not. Every other render site guards the same direction.
+ */
+function formatTotals(order: OrderResult): string {
+  if (order.serviceFee > 0) {
+    return `Subtotal: ${formatPrice(order.subtotal)}
+${SERVICE_FEE_LABEL}: ${formatPrice(order.serviceFee)}
+Total: ${formatPrice(order.total)}`;
+  }
+  return `Total: ${formatPrice(order.total)}`;
+}
+
+/**
  * The customer's receipt.
  *
  * Split from the owner alert below, which used to share a single
@@ -95,7 +121,7 @@ Thanks for your order! Here's your receipt:
 
 ${formatItemsList(order.items)}
 
-Total: ${formatPrice(order.total)}
+${formatTotals(order)}
 
 Pickup: ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}${
       pickupAddress ? `\nWhere: ${pickupAddress}` : ""
@@ -139,7 +165,7 @@ Pickup: ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickup
 Items to bake:
 ${formatItemsList(order.items)}
 
-Total: ${formatPrice(order.total)}${order.notes ? `\n\nCustomer notes: ${order.notes}` : ""}`,
+${formatTotals(order)}${order.notes ? `\n\nCustomer notes: ${order.notes}` : ""}`,
   });
 }
 
@@ -181,7 +207,7 @@ welcome to place the order again:
 
 ${formatItemsList(order.items)}
 
-Total: ${formatPrice(order.total)}
+${formatTotals(order)}
 
 If you think this is a mistake, just reply to this email${contactEmail ? ` or reach us at ${contactEmail}` : ""} and we'll help sort it out.
 

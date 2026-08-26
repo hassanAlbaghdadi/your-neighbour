@@ -47,6 +47,7 @@ export async function getOrderById(id: string): Promise<OrderResult | null> {
     pickupTime: order.pickup_time.slice(0, 5),
     notes: order.notes,
     subtotal: order.subtotal,
+    serviceFee: order.service_fee,
     total: order.total,
     status: order.status,
     paymentStatus: order.payment_status,

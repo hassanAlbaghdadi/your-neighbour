@@ -1,7 +1,9 @@
 import "server-only";
+import type Stripe from "stripe";
 import { headers } from "next/headers";
 import { getStripeClient } from "@/lib/stripe/client";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
+import { SERVICE_FEE_LABEL, toCents } from "@/lib/pricing/order-totals";
 import type { OrderResult } from "@/lib/services/orders/create-order";
 
 // How long a pending order can hold its pickup-capacity slot before the
@@ -45,6 +47,7 @@ export async function createCheckoutSessionForOrder(
   order: OrderResult,
 ): Promise<string> {
   const baseUrl = await getBaseUrl();
+  const lineItems = buildLineItems(order);
 
   const session = await getStripeClient().checkout.sessions.create({
     mode: "payment",
@@ -75,18 +78,7 @@ export async function createCheckoutSessionForOrder(
     customer_email: order.customerEmail,
     client_reference_id: order.id,
     metadata: { order_id: order.id },
-    line_items: order.items.map((item) => ({
-      quantity: item.quantity,
-      price_data: {
-        currency: "cad",
-        unit_amount: Math.round(item.unitPrice * 100),
-        product_data: {
-          name: item.variantLabel
-            ? `${item.productName} — ${item.variantLabel}`
-            : item.productName,
-        },
-      },
-    })),
+    line_items: lineItems,
     success_url: `${baseUrl}/confirmation/${order.id}`,
     cancel_url: `${baseUrl}/checkout`,
     expires_at: Math.floor(Date.now() / 1000) + SESSION_EXPIRY_SECONDS,
@@ -114,4 +106,74 @@ export async function createCheckoutSessionForOrder(
   }
 
   return session.url;
+}
+
+/**
+ * The order's line items plus the service fee, as its own Stripe line.
+ *
+ * A separate line rather than spread across the item prices: Stripe's own
+ * payment page then itemises it exactly the way the order summary did one
+ * screen earlier, so the customer meets no number they haven't already
+ * seen and agreed to. Checkout in `payment` mode doesn't let anyone edit
+ * line items, so it can't be dropped on the way through.
+ *
+ * The fee is read off the stored order rather than recomputed from
+ * SERVICE_FEE_RATE. That matters for more than tidiness: the session
+ * create below is sent with an idempotency key derived from the order id,
+ * and Stripe hard-errors when a key is reused with different parameters.
+ * Recomputing here would make a resubmit after a rate change fail outright.
+ *
+ * Both halves of this line have to be rate-independent for that to hold,
+ * which is why the name is SERVICE_FEE_LABEL and not the rate-bearing
+ * SERVICE_FEE_RATE_LABEL. `unit_amount` comes from the order row and
+ * `name` is a constant, so a retry across a rate change sends exactly the
+ * parameters the first attempt did.
+ */
+function buildLineItems(
+  order: OrderResult,
+): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
+    order.items.map((item) => ({
+      quantity: item.quantity,
+      price_data: {
+        currency: "cad",
+        unit_amount: toCents(item.unitPrice),
+        product_data: {
+          name: item.variantLabel
+            ? `${item.productName} — ${item.variantLabel}`
+            : item.productName,
+        },
+      },
+    }));
+
+  const feeCents = toCents(order.serviceFee);
+  if (feeCents > 0) {
+    lineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: "cad",
+        unit_amount: feeCents,
+        product_data: { name: SERVICE_FEE_LABEL },
+      },
+    });
+  }
+
+  // Nothing sends order.total to Stripe — the charge is implicitly the sum
+  // of the lines above — so the two could drift apart with nothing to
+  // notice. Failing here means a customer sees an error instead of being
+  // charged an amount that doesn't match the one they approved, and it
+  // fires in tests rather than in production.
+  const chargedCents = lineItems.reduce(
+    (sum, item) => sum + (item.price_data!.unit_amount ?? 0) * (item.quantity ?? 0),
+    0,
+  );
+  if (chargedCents !== toCents(order.total)) {
+    throw new Error(
+      `Line items for order ${order.id} total ${chargedCents} cents but the ` +
+        `order total is ${toCents(order.total)} cents. Refusing to charge a ` +
+        `different amount than the customer was shown.`,
+    );
+  }
+
+  return lineItems;
 }

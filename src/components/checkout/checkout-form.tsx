@@ -23,6 +23,11 @@ import { PickupDatePicker } from "@/components/checkout/pickup-date-picker";
 import { CheckoutAssurance } from "@/components/checkout/checkout-assurance";
 import { useCart } from "@/context/cart-context";
 import { createOrderAction } from "@/app/actions/orders";
+import {
+  calculateOrderTotals,
+  fromCents,
+  toCents,
+} from "@/lib/pricing/order-totals";
 import { cn, formatPrice } from "@/lib/utils";
 import { pickupInstant, formatPickupTime } from "@/lib/time";
 import { track, trackOnce } from "@/lib/analytics";
@@ -67,6 +72,10 @@ interface CheckoutFormProps {
 export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
   const router = useRouter();
   const { items, itemCount, subtotal, clearCart } = useCart();
+  // What the customer is actually about to be charged. The submit button
+  // is the last figure before the Stripe redirect, so it has to be this one
+  // and not the subtotal — see order-summary.tsx for the shared arithmetic.
+  const total = fromCents(calculateOrderTotals(toCents(subtotal)).totalCents);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [dateOpen, setDateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -249,7 +258,11 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     // not yet paid. It's cleared once the customer actually lands back on
     // the confirmation page with a paid order (see ClearCartOnSuccess).
     if (result.data.checkoutUrl) {
-      track("payment_redirect", { value: subtotal });
+      // The total, not the subtotal: this fires at the hand-off to Stripe,
+      // so its value should reconcile against what Stripe reports charging.
+      // begin_checkout above stays on the subtotal, which is the GA4
+      // convention for a pre-fee funnel step.
+      track("payment_redirect", { value: total });
       window.location.href = result.data.checkoutUrl;
       return;
     }
@@ -616,7 +629,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
           >
             {submitting
               ? "Taking you to payment…"
-              : `Continue to payment · ${formatPrice(subtotal)}`}
+              : `Continue to payment · ${formatPrice(total)}`}
           </Button>
         </div>
       </FieldGroup>

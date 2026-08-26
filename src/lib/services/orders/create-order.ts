@@ -2,6 +2,11 @@ import "server-only";
 import { z } from "zod";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
 import { getSettings } from "@/lib/services/settings/get-settings";
+import {
+  calculateOrderTotals,
+  fromCents,
+  subtotalCentsOf,
+} from "@/lib/pricing/order-totals";
 import { pickupInstant } from "@/lib/time";
 import type {
   CheckoutFieldName,
@@ -44,6 +49,7 @@ export interface OrderResult {
   pickupTime: string;
   notes: string | null;
   subtotal: number;
+  serviceFee: number;
   total: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
@@ -160,11 +166,22 @@ export async function processNewOrder(
       unit_price: variant.price,
     };
   });
-  const subtotal = orderItems.reduce(
-    (sum, item) => sum + item.unit_price * item.quantity,
-    0,
+  // Integer cents throughout, then converted back once at the end. See
+  // src/lib/pricing/order-totals.ts for why the rounding has to happen
+  // here and exactly once: Stripe is charged in cents, so a fee computed
+  // in dollars gives the rounding a second chance to land somewhere else
+  // and charge a penny more than the total the customer approved.
+  const { subtotalCents, feeCents, totalCents } = calculateOrderTotals(
+    subtotalCentsOf(
+      orderItems.map((item) => ({
+        unitPrice: item.unit_price,
+        quantity: item.quantity,
+      })),
+    ),
   );
-  const total = subtotal;
+  const subtotal = fromCents(subtotalCents);
+  const serviceFee = fromCents(feeCents);
+  const total = fromCents(totalCents);
 
   // A single RPC call: the order row and its items are inserted inside one
   // PL/pgSQL function body (see supabase/migrations/004_atomic_writes.sql),
@@ -185,6 +202,7 @@ export async function processNewOrder(
         pickup_time: input.pickupTime,
         notes: input.notes || null,
         subtotal,
+        service_fee: serviceFee,
         total,
       },
       p_items: orderItems,
@@ -210,6 +228,7 @@ export async function processNewOrder(
     pickupTime: order.pickup_time.slice(0, 5),
     notes: order.notes,
     subtotal: order.subtotal,
+    serviceFee: order.service_fee,
     total: order.total,
     status: order.status,
     paymentStatus: order.payment_status,
@@ -263,6 +282,7 @@ async function getExistingOrder(id: string): Promise<OrderResult | null> {
     pickupTime: order.pickup_time.slice(0, 5),
     notes: order.notes,
     subtotal: order.subtotal,
+    serviceFee: order.service_fee,
     total: order.total,
     status: order.status,
     paymentStatus: order.payment_status,

@@ -6,6 +6,7 @@ import { ClearCartOnSuccess } from "@/components/checkout/clear-cart-on-success"
 import { PendingPayment } from "@/components/checkout/pending-payment";
 import { getOrderById } from "@/lib/services/orders/get-order";
 import { getSettings } from "@/lib/services/settings/get-settings";
+import { SERVICE_FEE_LABEL } from "@/lib/pricing/order-totals";
 import { formatPrice } from "@/lib/utils";
 import { formatPickupDate, formatPickupTime } from "@/lib/time";
 
@@ -100,9 +101,28 @@ export default async function ConfirmationPage(
           ))}
         </ul>
 
-        <div className="flex items-center justify-between border-t border-border pt-4 text-base font-medium text-foreground">
-          <span>Total</span>
-          <span>{formatPrice(order.total)}</span>
+        {/* Broken out the same way checkout broke it out, but read off the
+            order rather than recomputed, so this shows what was actually
+            charged rather than what today's rate would charge. SERVICE_FEE_LABEL
+            carries no percentage for the same reason. Anything without a
+            positive fee falls back to a plain Total. */}
+        <div className="flex flex-col gap-2 border-t border-border pt-4 text-sm">
+          {order.serviceFee > 0 && (
+            <>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Subtotal</span>
+                <span>{formatPrice(order.subtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>{SERVICE_FEE_LABEL}</span>
+                <span>{formatPrice(order.serviceFee)}</span>
+              </div>
+            </>
+          )}
+          <div className="flex items-center justify-between text-base font-medium text-foreground">
+            <span>Total</span>
+            <span>{formatPrice(order.total)}</span>
+          </div>
         </div>
 
         {order.notes && (

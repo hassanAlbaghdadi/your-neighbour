@@ -196,6 +196,13 @@ export function CartDrawer({ minAdvanceHours }: CartDrawerProps) {
               <span>Subtotal</span>
               <span>{formatPrice(subtotal)}</span>
             </div>
+            {/* No service-fee note here on purpose. The figure above is
+                labelled "Subtotal" rather than "Total", and the very next
+                screen itemises the fee in dollars before any payment step —
+                so nothing here is claiming to be a final price. A drawer for
+                editing quantities is neither the advertised price nor the
+                point of commitment; a fee line belongs at one of those, and
+                order-summary.tsx is the one that matters. */}
             {onCheckout ? (
               <Button size="lg" onClick={() => onOpenChange(false)}>
                 Done

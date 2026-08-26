@@ -180,10 +180,18 @@ describe("CheckoutForm double-submit protection", () => {
 
     // Order summary renders the figure from the same numeric
     // `price`/`subtotal` the cart context provides — asserting it guards
-    // against a future formatPrice refactor leaking into the payload. Three
-    // surfaces now: the line item, the total, and the mobile disclosure row
-    // that keeps the total visible while the itemised list is collapsed.
-    expect(screen.getAllByText("$8.00")).toHaveLength(3);
+    // against a future formatPrice refactor leaking into the payload.
+    //
+    // The two figures are deliberately asserted separately. $8.00 is the
+    // pre-fee number and belongs on exactly two surfaces (the line item and
+    // the Subtotal row); $8.40 is what the customer actually pays and
+    // belongs on the other two (the Total row and the mobile disclosure row
+    // that keeps it visible while the itemised list is collapsed). A fee
+    // that stopped being applied, or a subtotal that leaked onto the
+    // disclosure row, moves one of these counts.
+    expect(screen.getAllByText("$8.00")).toHaveLength(2);
+    expect(screen.getAllByText("$8.40")).toHaveLength(2);
+    expect(screen.getByText("$0.40")).toBeInTheDocument();
   });
 
   it("submits the raw HH:mm slot even though the button shows 12-hour time", async () => {
@@ -282,13 +290,17 @@ describe("CheckoutForm double-submit protection", () => {
     ).toBeTruthy();
   });
 
-  it("puts the order total on the submit button", () => {
+  it("puts the order total, fee included, on the submit button", () => {
     // The button hands off to Stripe rather than completing the order, so
     // it names the next step and carries the amount.
+    //
+    // $8.40, not the $8.00 subtotal: this is the last figure the customer
+    // sees before the redirect, so it has to be the one Stripe will charge.
+    // Naming the subtotal here would make the hand-off itself the surprise.
     render(<CheckoutForm settings={settings} orderCounts={{}} />);
 
     expect(
-      screen.getByRole("button", { name: /continue to payment · \$8\.00/i }),
+      screen.getByRole("button", { name: /continue to payment · \$8\.40/i }),
     ).toBeInTheDocument();
   });
 });

@@ -34,7 +34,8 @@ const order: OrderResult = {
   pickupTime: "10:00",
   notes: null,
   subtotal: 24,
-  total: 24,
+  serviceFee: 1.2,
+  total: 25.2,
   status: "Pending",
   paymentStatus: "unpaid",
   items: [
@@ -54,7 +55,7 @@ describe("createCheckoutSessionForOrder", () => {
     eqMock.mockResolvedValue({ error: null });
   });
 
-  it("builds one Stripe line item per order item and returns the session url", async () => {
+  it("builds one Stripe line item per order item, plus the fee, and returns the session url", async () => {
     createSessionMock.mockResolvedValue({
       id: "cs_test_123",
       url: "https://checkout.stripe.com/cs_test_123",
@@ -86,6 +87,23 @@ describe("createCheckoutSessionForOrder", () => {
             price_data: expect.objectContaining({
               unit_amount: 800,
               product_data: { name: "Croissant" },
+            }),
+          }),
+          // Its own line rather than spread across the item prices, so
+          // Stripe's payment page itemises it exactly the way the order
+          // summary did one screen earlier. 5% of $24.00 = $1.20.
+          //
+          // Named without the rate on purpose: this call carries an
+          // idempotency key derived from the order id, and Stripe rejects a
+          // reused key whose parameters have changed. A product name that
+          // moved with the rate would break the retry of any order still
+          // pending across a rate change.
+          expect.objectContaining({
+            quantity: 1,
+            price_data: expect.objectContaining({
+              currency: "cad",
+              unit_amount: 120,
+              product_data: { name: "Service fee" },
             }),
           }),
         ],
@@ -128,6 +146,48 @@ describe("createCheckoutSessionForOrder", () => {
 
     const [params] = createSessionMock.mock.calls[0] as [{ payment_method_types: string[] }];
     expect(params.payment_method_types).toEqual(["card"]);
+  });
+
+  it("refuses to charge an amount that doesn't match the order total", async () => {
+    // Nothing sends order.total to Stripe — the charge is implicitly the
+    // sum of the line items — so the two could drift apart with nothing to
+    // notice. This is the guard that turns that into a loud failure before
+    // a session exists, rather than a customer being charged an amount
+    // they never agreed to.
+    createSessionMock.mockResolvedValue({
+      id: "cs_test_123",
+      url: "https://checkout.stripe.com/cs_test_123",
+    });
+
+    await expect(
+      createCheckoutSessionForOrder({ ...order, total: 99 }),
+    ).rejects.toThrow(/Refusing to charge a different amount/);
+    expect(createSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("omits the fee line entirely for an order that carries no fee", async () => {
+    // Every order placed before migration 011 has service_fee backfilled
+    // to 0. Those must not grow a $0.00 line item — Stripe rejects a
+    // zero-amount line in a payment-mode session, so this is a hard
+    // failure, not a cosmetic one.
+    createSessionMock.mockResolvedValue({
+      id: "cs_test_123",
+      url: "https://checkout.stripe.com/cs_test_123",
+    });
+
+    await createCheckoutSessionForOrder({
+      ...order,
+      serviceFee: 0,
+      total: 24,
+    });
+
+    const [params] = createSessionMock.mock.calls[0] as [
+      { line_items: { price_data: { unit_amount: number } }[] },
+    ];
+    expect(params.line_items).toHaveLength(2);
+    expect(
+      params.line_items.every((item) => item.price_data.unit_amount > 0),
+    ).toBe(true);
   });
 
   it("throws when Stripe doesn't return a checkout url", async () => {

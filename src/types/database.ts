@@ -138,6 +138,7 @@ export interface Database {
           pickup_time: string;
           notes: string | null;
           subtotal: number;
+          service_fee: number;
           total: number;
           status: OrderStatus;
           payment_status: PaymentStatus;
@@ -155,6 +156,7 @@ export interface Database {
           pickup_time: string;
           notes?: string | null;
           subtotal: number;
+          service_fee?: number;
           total: number;
           status?: OrderStatus;
           payment_status?: PaymentStatus;

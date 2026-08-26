@@ -15,6 +15,7 @@ export interface OrderListItem {
   customerPhone: string;
   pickupDate: string;
   pickupTime: string;
+  serviceFee: number;
   total: number;
   status: OrderStatus;
   itemCount: number;
@@ -33,6 +34,7 @@ interface OrderRow {
   customer_phone: string;
   pickup_date: string;
   pickup_time: string;
+  service_fee: number;
   total: number;
   status: OrderStatus;
   notes: string | null;
@@ -53,7 +55,7 @@ export async function getOrders(
   let query = supabase
     .from("orders")
     .select(
-      "id, customer_name, customer_phone, pickup_date, pickup_time, total, status, notes, order_items(product_name, variant_label, quantity, unit_price)",
+      "id, customer_name, customer_phone, pickup_date, pickup_time, service_fee, total, status, notes, order_items(product_name, variant_label, quantity, unit_price)",
     )
     .order("pickup_date", { ascending: true })
     .order("pickup_time", { ascending: true });
@@ -76,6 +78,7 @@ export async function getOrders(
     customerPhone: order.customer_phone,
     pickupDate: order.pickup_date,
     pickupTime: order.pickup_time.slice(0, 5),
+    serviceFee: order.service_fee,
     total: order.total,
     status: order.status,
     notes: order.notes,

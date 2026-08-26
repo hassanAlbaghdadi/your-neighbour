@@ -4,12 +4,14 @@ import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
-import { formatPrice } from "@/lib/utils";
+import { SERVICE_FEE_LABEL } from "@/lib/pricing/order-totals";
+import { cn, formatPrice } from "@/lib/utils";
 import type { OrderListItem } from "@/lib/services/orders/get-orders";
 
 export function OrderRow({ order }: { order: OrderListItem }) {
   const [expanded, setExpanded] = useState(false);
-  const hasDetails = order.items.length > 0 || !!order.notes;
+  const hasDetails =
+    order.items.length > 0 || !!order.notes || order.serviceFee > 0;
 
   return (
     <>
@@ -61,8 +63,31 @@ export function OrderRow({ order }: { order: OrderListItem }) {
                 ))}
               </ul>
             )}
+            {/* The Total column is what the customer paid; this is the part
+                of it that isn't the food. Without it the admin list is the
+                one screen where the money doesn't reconcile against the
+                receipt the customer is holding. */}
+            {order.serviceFee > 0 && (
+              <p className={cn("text-sm", order.items.length > 0 && "mt-2")}>
+                <span className="font-medium text-foreground">
+                  {SERVICE_FEE_LABEL}:{" "}
+                </span>
+                <span className="text-muted-foreground">
+                  {formatPrice(order.serviceFee)} of {formatPrice(order.total)}
+                </span>
+              </p>
+            )}
+            {/* Spaced against whatever actually precedes it, which is now
+                either the item list or the fee line. Keying the margin off
+                the item count alone left the notes flush against the fee on
+                an order that has a fee and notes but no items. */}
             {order.notes && (
-              <p className={order.items.length > 0 ? "mt-2 text-sm" : "text-sm"}>
+              <p
+                className={cn(
+                  "text-sm",
+                  (order.items.length > 0 || order.serviceFee > 0) && "mt-2",
+                )}
+              >
                 <span className="font-medium text-foreground">Note: </span>
                 <span className="text-muted-foreground">{order.notes}</span>
               </p>

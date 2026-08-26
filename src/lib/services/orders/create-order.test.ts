@@ -83,7 +83,8 @@ function setupSupabaseMocks({
       pickup_time: "10:00:00",
       notes: null,
       subtotal: 16,
-      total: 16,
+      service_fee: 0.8,
+      total: 16.8,
       status: "Pending",
       payment_status: "unpaid",
     },
@@ -154,13 +155,22 @@ describe("processNewOrder", () => {
     const result = await processNewOrder(baseInput);
 
     expect(result.id).toBe(baseInput.id);
-    expect(result.total).toBe(16);
+    expect(result.total).toBe(16.8);
     expect(result.paymentStatus).toBe("unpaid");
     expect(rpcMock).toHaveBeenCalledTimes(1);
     expect(rpcMock).toHaveBeenCalledWith(
       "create_order_atomic",
       expect.objectContaining({
-        p_order_row: expect.objectContaining({ id: baseInput.id }),
+        // 2 x $8.00 = $16.00, 5% of which is $0.80. Asserted on the *input*
+        // to the RPC, not on the result: the result is whatever the mocked
+        // row says, so only this catches the fee being computed wrong (or
+        // not at all) on the way in.
+        p_order_row: expect.objectContaining({
+          id: baseInput.id,
+          subtotal: 16,
+          service_fee: 0.8,
+          total: 16.8,
+        }),
         p_items: expect.arrayContaining([
           expect.objectContaining({
             variant_id: VARIANT_ID,
@@ -332,7 +342,8 @@ describe("processNewOrder", () => {
         pickup_time: "10:00:00",
         notes: null,
         subtotal: 16,
-        total: 16,
+        service_fee: 0.8,
+        total: 16.8,
         status: "Pending",
         payment_status: "unpaid",
       },
