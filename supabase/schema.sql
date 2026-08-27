@@ -60,7 +60,7 @@ CREATE TABLE orders (
   notes TEXT,
   subtotal NUMERIC(10, 2) NOT NULL,
   total NUMERIC(10, 2) NOT NULL,
-  status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed', 'Cancelled')),
+  status TEXT NOT NULL DEFAULT 'New' CHECK (status IN ('New', 'Ready', 'Fulfilled', 'Cancelled')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

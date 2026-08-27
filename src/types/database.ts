@@ -4,20 +4,12 @@
  *   npx supabase gen types typescript --project-id <ref> --schema public
  */
 
-export type OrderStatus =
-  | "Pending"
-  | "Confirmed"
-  | "Preparing"
-  | "Ready"
-  | "Completed"
-  | "Cancelled";
+export type OrderStatus = "New" | "Ready" | "Fulfilled" | "Cancelled";
 
 export const ORDER_STATUSES: OrderStatus[] = [
-  "Pending",
-  "Confirmed",
-  "Preparing",
+  "New",
   "Ready",
-  "Completed",
+  "Fulfilled",
   "Cancelled",
 ];
 

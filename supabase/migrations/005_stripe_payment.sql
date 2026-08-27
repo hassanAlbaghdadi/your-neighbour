@@ -8,7 +8,8 @@
 -- deliberate, it's what lets an online pre-order hold its place before
 -- payment finishes. `payment_status` tracks whether that reservation has
 -- actually been paid for yet, separately from `status`, which tracks
--- fulfillment (Pending/Confirmed/Preparing/...). No default is needed on
+-- fulfillment (New/Ready/Fulfilled/...; see 012_simplify_order_statuses.sql).
+-- No default is needed on
 -- create_order_atomic's INSERT — new rows fall through to `payment_status
 -- DEFAULT 'unpaid'` below untouched.
 -- ======================================================================

@@ -85,7 +85,7 @@ function setupSupabaseMocks({
       subtotal: 16,
       service_fee: 0.8,
       total: 16.8,
-      status: "Pending",
+      status: "New",
       payment_status: "unpaid",
     },
     error: null,
@@ -344,7 +344,7 @@ describe("processNewOrder", () => {
         subtotal: 16,
         service_fee: 0.8,
         total: 16.8,
-        status: "Pending",
+        status: "New",
         payment_status: "unpaid",
       },
     });

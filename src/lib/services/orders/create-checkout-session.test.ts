@@ -37,7 +37,7 @@ const order: OrderResult = {
   subtotal: 24,
   serviceFee: 1.2,
   total: 25.2,
-  status: "Pending",
+  status: "New",
   paymentStatus: "unpaid",
   items: [
     { productName: "Sourdough Loaf", variantLabel: "Large", quantity: 2, unitPrice: 8 },

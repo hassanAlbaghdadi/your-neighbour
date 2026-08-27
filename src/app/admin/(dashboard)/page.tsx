@@ -11,22 +11,20 @@ import { formatPrice, resolveSummaryDate } from "@/lib/utils";
 import { businessToday } from "@/lib/time";
 import type { OrderStatus } from "@/types/database";
 
-const FILTERS = ["today", "pending", "preparing", "ready", "completed"] as const;
+const FILTERS = ["today", "new", "ready", "fulfilled"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const FILTER_LABELS: Record<Filter, string> = {
   today: "Today",
-  pending: "Pending",
-  preparing: "Preparing",
+  new: "New",
   ready: "Ready",
-  completed: "Completed",
+  fulfilled: "Fulfilled",
 };
 
 const STATUS_BY_FILTER: Record<Exclude<Filter, "today">, OrderStatus> = {
-  pending: "Pending",
-  preparing: "Preparing",
+  new: "New",
   ready: "Ready",
-  completed: "Completed",
+  fulfilled: "Fulfilled",
 };
 
 function isFilter(value: unknown): value is Filter {
@@ -64,7 +62,7 @@ export default async function AdminOrdersPage({
   // count.
   const liveOrders = todaysOrders.filter((o) => o.status !== "Cancelled");
   const todaysOrderCount = liveOrders.length;
-  const pendingCount = liveOrders.filter((o) => o.status === "Pending").length;
+  const newCount = liveOrders.filter((o) => o.status === "New").length;
   const todaysRevenue = liveOrders
     .filter((o) => o.paymentStatus === "paid")
     .reduce((sum, o) => sum + o.total, 0);
@@ -83,7 +81,7 @@ export default async function AdminOrdersPage({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 print:hidden">
         <StatTile label="Today's Orders" value={String(todaysOrderCount)} />
-        <StatTile label="Pending" value={String(pendingCount)} accent="primary" />
+        <StatTile label="New" value={String(newCount)} accent="primary" />
         <StatTile label="Today's Revenue" value={formatPrice(todaysRevenue)} accent="secondary" />
       </div>
 
