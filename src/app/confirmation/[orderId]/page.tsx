@@ -1,6 +1,13 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, MapPin, CalendarPlus, Navigation } from "lucide-react";
+import {
+  CheckCircle2,
+  MapPin,
+  CalendarPlus,
+  Navigation,
+  ImageOff,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClearCartOnSuccess } from "@/components/checkout/clear-cart-on-success";
 import { PendingPayment } from "@/components/checkout/pending-payment";
@@ -95,15 +102,28 @@ export default async function ConfirmationPage(
   const hiddenCount = order.items.length - visibleItems.length;
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6">
+    <div className="mx-auto w-full max-w-2xl px-4 pt-6 pb-12 sm:px-6">
       <ClearCartOnSuccess />
       <TrackOrderConfirmed />
 
-      <div className="flex flex-col items-center text-center">
-        <CheckCircle2 className="size-11 text-primary" />
-        <h1 className="mt-3 font-heading text-3xl font-semibold text-foreground">
-          Order Confirmed
-        </h1>
+      {/* Order reference as a top-right pill rather than a line of body text
+          at the foot of the page -- it's the one thing a customer comes
+          back to quote, so it reads better parked where a receipt number
+          usually sits. "Paid" isn't repeated here: the check, the heading
+          and "we've sent your receipt" already carry it. */}
+      <div className="flex justify-end">
+        <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+          Order #{order.id.slice(0, 8)}
+        </span>
+      </div>
+
+      <div className="mt-2 flex flex-col items-center text-center">
+        <div className="flex items-center gap-2.5">
+          <CheckCircle2 className="size-8 shrink-0 text-primary" />
+          <h1 className="font-heading text-3xl font-semibold text-foreground">
+            Order Confirmed!
+          </h1>
+        </div>
         {/* "Ready for pickup" dropped: the very next section is labeled
             PICKUP with the date, time and address, so it was telling the
             reader something the page says again two inches lower. The
@@ -119,13 +139,13 @@ export default async function ConfirmationPage(
 
       <div className="mt-6 rounded-xl border border-border bg-card p-6 sm:p-7">
         <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
-          Pickup
+          Pickup Details
         </p>
-        <div className="mt-3 flex items-baseline justify-between text-foreground">
-          <span className="font-medium">
+        <div className="mt-3 flex items-baseline justify-between gap-3 text-foreground">
+          <span className="text-lg font-semibold">
             {formatPickupDate(order.pickupDate)}
           </span>
-          <span className="font-medium">
+          <span className="shrink-0 text-lg font-semibold">
             {formatPickupTime(order.pickupTime)}
           </span>
         </div>
@@ -166,7 +186,7 @@ export default async function ConfirmationPage(
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Navigation /> Directions
+                <Navigation /> Get Directions
               </a>
             </Button>
           )}
@@ -176,23 +196,39 @@ export default async function ConfirmationPage(
           <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
             Your order
           </p>
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="mt-3 flex flex-col gap-3">
             {visibleItems.map((item, index) => (
-              <li
-                key={index}
-                className="flex items-center justify-between text-sm"
-              >
-                <span className="text-foreground">
-                  {item.quantity} × {item.productName}
+              <li key={index} className="flex items-center gap-3 text-sm">
+                {/* Sized at 112 for a 40px box, matching the cart drawer's
+                    reasoning: a sized image only gets 1x/2x candidates, so
+                    asking for the paint size leaves DPR-3 phones upscaling a
+                    soft thumbnail. 112 lands on the 128w/256w rungs. */}
+                <div className="relative size-10 shrink-0 overflow-hidden rounded-md bg-muted">
+                  {item.imageUrl ? (
+                    <Image
+                      src={item.imageUrl}
+                      alt=""
+                      width={112}
+                      height={112}
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center text-muted-foreground">
+                      <ImageOff className="size-4" />
+                    </div>
+                  )}
+                </div>
+                <span className="min-w-0 flex-1 text-foreground">
+                  {item.productName}
                   {item.variantLabel && (
                     <span className="text-muted-foreground">
                       {" "}
-                      — {item.variantLabel}
+                      ({item.variantLabel})
                     </span>
                   )}
                 </span>
-                <span className="text-muted-foreground">
-                  {formatPrice(item.unitPrice * item.quantity)}
+                <span className="shrink-0 text-muted-foreground">
+                  ×{item.quantity} — {formatPrice(item.unitPrice * item.quantity)}
                 </span>
               </li>
             ))}
@@ -203,7 +239,7 @@ export default async function ConfirmationPage(
                 pickup details, not a full itemized reprint. Subtotal below
                 already reflects every item, hidden or not. */}
             {hiddenCount > 0 && (
-              <li className="text-sm text-muted-foreground">
+              <li className="text-sm text-muted-foreground ps-[52px]">
                 + {hiddenCount} more item{hiddenCount > 1 ? "s" : ""}
               </li>
             )}
@@ -238,64 +274,56 @@ export default async function ConfirmationPage(
       {/* Whitespace-only notes pass the checkout schema today (it has no
           .trim()), so a note of just a few spaces is a real, reachable case
           -- checking .trim() here, not just truthiness, keeps that from
-          rendering an empty-looking box. "You told us" rather than "Notes:"
-          -- the label is the only difference, but one reads as a field
-          dump and the other as someone confirming they actually read it. */}
+          rendering an empty-looking box. Styled as a callout with a tail
+          pointing back at the order card, so it reads as the customer's
+          own words rather than a form field dump. The label sits on its own
+          line, bold -- enough contrast to read as a label, but sentence
+          case rather than the terracotta uppercase eyebrow the main card's
+          sections use: this is an aside beside the order, not a section of
+          it, and shouldn't rank alongside PICKUP DETAILS / YOUR ORDER. */}
       {hasNotes && (
-        <p className="mt-4 rounded-xl bg-muted px-5 py-4 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">You told us: </span>
-          {order.notes}
-        </p>
+        <div className="relative mt-5 rounded-xl bg-muted px-5 py-4 text-sm text-muted-foreground">
+          {/* A rotated square, half-hidden behind the box's top edge, is the
+              speech-bubble tail. rounded-[2px] softens its tip to match the
+              container's corners. */}
+          <div className="absolute -top-1.5 left-8 size-3 rotate-45 rounded-[2px] bg-muted" />
+          <p className="font-semibold text-foreground">Your note to us</p>
+          <p className="mt-1">{order.notes}</p>
+        </div>
       )}
 
-      {/* 1. Order badge */}
-      <p className="mt-5 text-center text-sm text-muted-foreground">
-        Order #{order.id.slice(0, 8)} · Paid
-      </p>
-
-      {/* 2. Compact support line. The order number still reaches Sarah --
-          via the mailto subject instead of spelled out in visible text, so
-          the "quote your order number" job the old longer line did isn't
-          lost, only moved off the page. Falls back to plain text, matching
-          the original's behaviour, when no contact address is configured. */}
-      <p className="mt-2 text-center text-sm text-muted-foreground">
-        {settings.contactEmail ? (
-          <>
-            Need to make changes?{" "}
-            <a
-              href={`mailto:${settings.contactEmail}?subject=${encodeURIComponent(`Order #${order.id.slice(0, 8)}`)}`}
-              className="text-link underline underline-offset-4"
-            >
-              Email us
-            </a>
-          </>
-        ) : (
-          "Need to make changes? Get in touch."
-        )}
-      </p>
-
-      {/* 3. Warm closing & CTA. Back to Menu is a plain link, not a bordered
-          button -- there's no competing action left on the page for it to
-          out-rank, so the padding and border were pure weight with nothing
-          to justify it. Matches how "Email us" above is already styled, so
-          the page ends with one consistent kind of quiet link. Every other
-          page that speaks in Sarah's own voice (the founder note, Our
-          Story's pull quote) uses the heading serif to mark that shift from
-          information to person -- this is the last thing before they leave
-          the page, so it's the right place for the one line that isn't
-          logistics. */}
-      <p className="mt-4 text-center font-heading text-lg text-espresso-700">
+      {/* One line in Sarah's own voice before the logistics links -- the
+          heading serif marks that shift from information to person, the
+          same way the founder note and Our Story's pull quote do. Not in
+          the mockup, kept on purpose. */}
+      <p className="mt-8 text-center font-heading text-lg text-espresso-700">
         Can&apos;t wait to bake this for you! — Sarah
       </p>
 
-      <p className="mt-3 text-center">
-        <Link
-          href="/"
-          className="text-sm text-link underline underline-offset-4"
-        >
-          Back to Menu
-        </Link>
-      </p>
+      {/* The mockup's footer: a support link and the way back to the menu,
+          side by side. Its big "modify your order" button is omitted --
+          changes go through the same contact route "Need to make changes?"
+          already points at, so the button was a second door to one room.
+          The order number rides in the mailto subject, so "quote your
+          order number" is covered without spelling it out here. Falls back
+          to plain text when no contact address is configured. */}
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
+        {settings.contactEmail ? (
+          <a
+            href={`mailto:${settings.contactEmail}?subject=${encodeURIComponent(`Order #${order.id.slice(0, 8)}`)}`}
+            className="text-sm text-link underline underline-offset-4"
+          >
+            Need to make changes?
+          </a>
+        ) : (
+          <span className="text-sm text-muted-foreground">
+            Need to make changes? Get in touch.
+          </span>
+        )}
+        <Button asChild variant="outline">
+          <Link href="/">Back to Menu</Link>
+        </Button>
+      </div>
     </div>
   );
 }

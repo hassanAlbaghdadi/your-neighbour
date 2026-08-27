@@ -30,9 +30,15 @@ export async function getOrderById(id: string): Promise<OrderResult | null> {
   }
   if (!order) return null;
 
+  // Pulls the variant photo (falling back to the parent product's, same
+  // rule as the storefront) so the confirmation page can show a thumbnail
+  // per line. Embedded by the product_id / variant_id foreign keys, both
+  // ON DELETE RESTRICT, so a live order's rows always resolve.
   const { data: items, error: itemsError } = await supabase
     .from("order_items")
-    .select("product_name, variant_label, quantity, unit_price")
+    .select(
+      "product_name, variant_label, quantity, unit_price, products(image_url), product_variants(image_url)",
+    )
     .eq("order_id", id);
   if (itemsError) {
     throw new Error(`Failed to load order items: ${itemsError.message}`);
@@ -52,11 +58,21 @@ export async function getOrderById(id: string): Promise<OrderResult | null> {
     total: order.total,
     status: order.status,
     paymentStatus: order.payment_status,
-    items: (items ?? []).map((item) => ({
-      productName: item.product_name,
-      variantLabel: item.variant_label,
-      quantity: item.quantity,
-      unitPrice: item.unit_price,
-    })),
+    items: (items ?? []).map((item) => {
+      // PostgREST types a to-one embed as `T | T[]`; normalise both.
+      const product = Array.isArray(item.products)
+        ? item.products[0]
+        : item.products;
+      const variant = Array.isArray(item.product_variants)
+        ? item.product_variants[0]
+        : item.product_variants;
+      return {
+        productName: item.product_name,
+        variantLabel: item.variant_label,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        imageUrl: variant?.image_url ?? product?.image_url ?? null,
+      };
+    }),
   };
 }

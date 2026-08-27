@@ -38,6 +38,13 @@ export interface OrderResultItem {
   variantLabel: string | null;
   quantity: number;
   unitPrice: number;
+  /**
+   * Variant photo, falling back to the parent product's. Only the
+   * confirmation page fills this in (see get-order.ts) -- the checkout
+   * paths that also build an OrderResult have no use for it, so it's
+   * optional rather than threaded through every builder.
+   */
+  imageUrl?: string | null;
 }
 
 export interface OrderResult {
