@@ -66,63 +66,13 @@ export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
           <h1 className="max-w-lg font-heading text-4xl font-semibold text-cream-50 sm:text-5xl">
             A little taste of home
           </h1>
-          {/* KEEP THIS UNDER 80 CHARACTERS. At 343px/16px the budget is
-              ~40 chars a line, so 80 is the last length that still sets as
-              two lines on a phone. A third line raises the top of this text
-              block from 64% of the hero to ~61%, which lifts it out of the
-              >=70% band the scrim above is sized for and into the part that
-              fades — the 1.12:1-against-a-white-upload failure that comment
-              describes. Shorten the copy; don't reach for the gradient.
-
-              This used to sell pre-ordering and pickup, which the founder
-              band states outright 123px below, and freshness, which the h1
-              above already says. So it named everything about the shop
-              except the thing being sold.
-
-              It then carried the recipe — "soft bread stuffed with cream
-              cheese, soaked in sugar syrup" — which has since moved to the
-              menu intro, where the same words do a second job the hero
-              can't: they factor out the opening every card shares, so the
-              grid reads as variations rather than six unrelated items. It
-              only earns that reading next to the cards. Repeating it here
-              would spend the largest text on the page saying what the
-              reader is about to be told again 700px lower.
-
-              What's left for this line is the one fact nothing else on the
-              homepage states: what the food is called and where it's from.
-              The menu intro says what it's made of and the founder band
-              says who bakes it and how to buy -- neither names it. Our
-              Story does, but that's a page most visitors never open, so the
-              name lands here or nowhere.
-
-              "made to pull apart and share" is doing the harder half of
-              that job. A transliteration plus a category ("Yemeni honeycomb
-              bread.") is precise and inert: it tells a reader who already
-              knows this bread that we have it, and tells everyone else a
-              label they can't picture. Pulling it apart is the part anyone
-              can picture without a translation, and sharing is what the
-              thing is actually for -- Our Story ends on bringing people
-              together, and this is the only line on the homepage that acts
-              like it.
-
-              It costs nothing to say: 72 chars is inside the 80 above, it
-              still sets as two lines on a phone, and it repairs a wrap
-              defect in the old copy, whose second line ran 14% full with
-              "bread." stranded on it alone. Now 88%/84%.
-
-              Don't add the Karak tea from Our Story to this line: it's part
-              of Sarah's story, not the menu. Every product on the grid
-              below is this bread.
-
-              Reordered from "Khaliat El Nahal -- Yemeni honeycomb bread"
-              (same 72 chars, same two elements, just which one leads).
-              "Honeycomb bread" is a real term a first-time reader can
-              picture and the one the <title> tag now leads with too, so the
-              page a search brought them to says the same thing the search
-              result promised; the transliteration follows as the specific
-              name once the category's established, same job it always did. */}
+          {/* KEEP UNDER ~80 CHARACTERS. That's the last length that still
+              wraps to two lines on a phone; a third line lifts the top of
+              this text block out of the >=70% band the scrim above is sized
+              for, into the part that fades, and fails contrast. Shorten the
+              copy; don't reach for the gradient. */}
           <p className="mt-4 max-w-md text-base text-cream-50/95 sm:text-lg">
-            Yemeni honeycomb bread — Khaliat El Nahal, made to pull apart and
+            Khaliat El Nahal — Yemeni honeycomb bread, made to pull apart and
             share.
           </p>
           <Button asChild size="lg" className="mt-7">
