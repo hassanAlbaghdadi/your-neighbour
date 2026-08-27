@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { Clock } from "lucide-react";
-import { trackOnce } from "@/lib/analytics";
+import { track, trackOnce } from "@/lib/analytics";
 
 interface FounderNoteProps {
   minAdvanceHours: number;
@@ -63,8 +64,21 @@ export function FounderNote({ minAdvanceHours }: FounderNoteProps) {
             three words here point at that page; a sentence here replaces
             it. */}
         <p className="font-heading text-base text-espresso-700">
-          Baked by Sarah in the North End — her mum&apos;s recipe, one small
-          batch at a time.
+          Baked by Sarah in Halifax&rsquo;s North End —{" "}
+          {/* The comment above notes that these three words "point at that
+              page". They now actually do. An inline link rather than a new
+              line because this band is deliberately one band -- a separate
+              call-to-action underneath would turn it into the paragraph the
+              one-band decision exists to avoid, and this costs no height at
+              all. */}
+          <Link
+            href="/our-story"
+            onClick={() => track("story_click", { location: "founder_note" })}
+            className="underline decoration-terracotta-600/40 underline-offset-4 transition-colors hover:decoration-terracotta-600"
+          >
+            her mum&apos;s recipe
+          </Link>
+          , one small batch at a time.
         </p>
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Clock className="size-3.5 shrink-0 text-terracotta-600" />

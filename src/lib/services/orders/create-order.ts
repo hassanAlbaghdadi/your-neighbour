@@ -42,6 +42,8 @@ export interface OrderResultItem {
 
 export interface OrderResult {
   id: string;
+  /** Stable per order, so a retried checkout sends Stripe identical parameters. */
+  createdAt: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -221,6 +223,7 @@ export async function processNewOrder(
 
   const result: OrderResult = {
     id: order.id,
+    createdAt: order.created_at,
     customerName: order.customer_name,
     customerEmail: order.customer_email,
     customerPhone: order.customer_phone,
@@ -259,6 +262,10 @@ async function getExistingOrder(id: string): Promise<OrderResult | null> {
     .from("orders")
     .select("*")
     .eq("id", id)
+    // Not a cancelled one: its slot has already been released, so handing
+    // it back would sell a reservation that no longer exists. A cancelled
+    // id falls through and starts a fresh order instead.
+    .neq("status", "Cancelled")
     .maybeSingle();
   if (error) {
     throw new Error(`Failed to check existing order: ${error.message}`);
@@ -275,6 +282,7 @@ async function getExistingOrder(id: string): Promise<OrderResult | null> {
 
   return {
     id: order.id,
+    createdAt: order.created_at,
     customerName: order.customer_name,
     customerEmail: order.customer_email,
     customerPhone: order.customer_phone,

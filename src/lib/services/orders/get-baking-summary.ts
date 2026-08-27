@@ -25,6 +25,10 @@ export async function getBakingSummary(
     .from("orders")
     .select("order_items(product_name, variant_label, quantity)")
     .eq("pickup_date", pickupDate)
+    // Paid only: an order is written before Stripe, so an abandoned
+    // checkout is a real row for up to 30 minutes. Baking from it means
+    // baking something nobody bought.
+    .eq("payment_status", "paid")
     .neq("status", "Cancelled");
 
   if (error) {

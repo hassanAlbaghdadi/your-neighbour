@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackOnce } from "@/lib/analytics";
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLLS = 15;
@@ -27,6 +28,15 @@ export function PendingPayment() {
   const [attempts, setAttempts] = useState(0);
 
   const exhausted = attempts >= MAX_POLLS;
+
+  // Fires once the webhook has taken longer than 30s to confirm payment --
+  // a real signal, not a guaranteed problem (Stripe's redirect routinely
+  // beats the webhook), but currently invisible in production. If this
+  // fires often, webhook latency is worth investigating; if it never does,
+  // it's a non-issue and this confirms that instead of leaving it assumed.
+  useEffect(() => {
+    if (exhausted) trackOnce("payment_still_confirming");
+  }, [exhausted]);
 
   useEffect(() => {
     if (exhausted) return;

@@ -57,9 +57,17 @@ export default async function AdminOrdersPage({
     getOrders({ pickupDate: today }),
   ]);
 
-  const todaysOrderCount = todaysOrders.length;
-  const pendingCount = todaysOrders.filter((o) => o.status === "Pending").length;
-  const todaysRevenue = todaysOrders.reduce((sum, o) => sum + o.total, 0);
+  // An order row exists from the moment "Continue to payment" is clicked and
+  // survives as Cancelled after an abandoned checkout, so counting every row
+  // overstates both tiles -- and revenue is the one number here that reads as
+  // money. Cancelled orders stay visible in the list below; they just don't
+  // count.
+  const liveOrders = todaysOrders.filter((o) => o.status !== "Cancelled");
+  const todaysOrderCount = liveOrders.length;
+  const pendingCount = liveOrders.filter((o) => o.status === "Pending").length;
+  const todaysRevenue = liveOrders
+    .filter((o) => o.paymentStatus === "paid")
+    .reduce((sum, o) => sum + o.total, 0);
 
   const prevDate = format(subDays(parseISO(summaryDate), 1), "yyyy-MM-dd");
   const nextDate = format(addDays(parseISO(summaryDate), 1), "yyyy-MM-dd");

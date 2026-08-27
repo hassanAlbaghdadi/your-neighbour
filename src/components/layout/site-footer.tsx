@@ -36,8 +36,19 @@ export function SiteFooter({
             </span>
           </Link>
           <p className="mt-3 max-w-xs text-sm text-cream-50/70">
-            Small-batch baked goods, made to order for local pickup.
+            Small-batch baked goods, made to order for pickup in Halifax&rsquo;s North End.
           </p>
+          {/* The only route to Our Story that exists on every page. The
+              header's link is `hidden sm:inline-block`, so on a phone the
+              story was reachable solely by opening the nav sheet -- and for a
+              home bakery with no reviews, that page is the trust argument. */}
+          <Link
+            href="/our-story"
+            onClick={() => track("story_click", { location: "footer" })}
+            className="mt-2 inline-block py-1 text-sm text-cream-50/80 underline decoration-cream-50/30 underline-offset-4 transition-colors hover:text-cream-50 hover:decoration-cream-50"
+          >
+            Our story
+          </Link>
         </div>
 
         {categories.length > 0 && (
@@ -82,7 +93,7 @@ export function SiteFooter({
           <a
             href={INSTAGRAM_URL}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="me noopener noreferrer"
             onClick={() => track("instagram_click", { location: "footer" })}
             className="mt-3 flex items-center gap-1.5 text-sm text-cream-50/80 transition-colors hover:text-cream-50"
           >

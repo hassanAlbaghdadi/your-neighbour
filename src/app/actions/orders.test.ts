@@ -62,16 +62,40 @@ describe("createOrderAction", () => {
     checkRateLimitsMock.mockResolvedValue(true);
   });
 
-  it("refuses the order and never reserves a slot when rate limited", async () => {
-    // Every created order holds a pickup-capacity slot until its Stripe
-    // session expires, so the limiter has to bite before processNewOrder —
-    // rejecting after the reservation would defeat the point.
+  it("refuses the order and releases its reservation when rate limited", async () => {
+    // The limiter runs after processNewOrder, not before: the OrderError
+    // rejections that function throws for (blackout date, too little
+    // notice, fully booked) are walls a customer can hit repeatedly while
+    // placing zero real orders, and counting those against the limit could
+    // lock someone out without them ever holding a slot. So this exercises
+    // the one case the limiter actually has to catch — a reservation *was*
+    // made — and expects it released rather than left to hold the slot for
+    // no reason.
+    const order = { id: validPayload.id, total: 8, paymentStatus: "unpaid" };
+    processNewOrderMock.mockResolvedValue(order);
     checkRateLimitsMock.mockResolvedValue(false);
 
     const result = await createOrderAction(validPayload);
 
     expect(result.success).toBe(false);
-    expect(processNewOrderMock).not.toHaveBeenCalled();
+    expect(releaseUnstartedReservationMock).toHaveBeenCalledWith(order.id);
+    expect(createCheckoutSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("never rate-limits a resubmit of an already-paid order", async () => {
+    // paymentStatus: "paid" here means processNewOrder's own idempotent
+    // lookup found an existing order — nothing left to reserve or check
+    // out, so there is nothing for the limiter to protect either.
+    processNewOrderMock.mockResolvedValue({
+      id: validPayload.id,
+      total: 8,
+      paymentStatus: "paid",
+    });
+
+    const result = await createOrderAction(validPayload);
+
+    expect(result.success).toBe(true);
+    expect(checkRateLimitsMock).not.toHaveBeenCalled();
   });
 
   it("limits by both client IP and customer email", async () => {

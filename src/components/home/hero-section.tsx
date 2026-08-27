@@ -112,9 +112,17 @@ export function HeroSection({ imageUrl, imageAlt }: HeroSectionProps) {
 
               Don't add the Karak tea from Our Story to this line: it's part
               of Sarah's story, not the menu. Every product on the grid
-              below is this bread. */}
+              below is this bread.
+
+              Reordered from "Khaliat El Nahal -- Yemeni honeycomb bread"
+              (same 72 chars, same two elements, just which one leads).
+              "Honeycomb bread" is a real term a first-time reader can
+              picture and the one the <title> tag now leads with too, so the
+              page a search brought them to says the same thing the search
+              result promised; the transliteration follows as the specific
+              name once the category's established, same job it always did. */}
           <p className="mt-4 max-w-md text-base text-cream-50/95 sm:text-lg">
-            Khaliat El Nahal — Yemeni honeycomb bread, made to pull apart and
+            Yemeni honeycomb bread — Khaliat El Nahal, made to pull apart and
             share.
           </p>
           <Button asChild size="lg" className="mt-7">

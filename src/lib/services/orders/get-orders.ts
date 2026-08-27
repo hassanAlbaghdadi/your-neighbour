@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { OrderStatus } from "@/types/database";
+import type { OrderStatus, PaymentStatus } from "@/types/database";
 
 export interface OrderLineItem {
   productName: string;
@@ -18,6 +18,8 @@ export interface OrderListItem {
   serviceFee: number;
   total: number;
   status: OrderStatus;
+  /** An order exists before it is paid for, so callers that count money must check this. */
+  paymentStatus: PaymentStatus;
   itemCount: number;
   notes: string | null;
   items: OrderLineItem[];
@@ -37,6 +39,7 @@ interface OrderRow {
   service_fee: number;
   total: number;
   status: OrderStatus;
+  payment_status: PaymentStatus;
   notes: string | null;
   order_items: {
     product_name: string;
@@ -55,7 +58,7 @@ export async function getOrders(
   let query = supabase
     .from("orders")
     .select(
-      "id, customer_name, customer_phone, pickup_date, pickup_time, service_fee, total, status, notes, order_items(product_name, variant_label, quantity, unit_price)",
+      "id, customer_name, customer_phone, pickup_date, pickup_time, service_fee, total, status, payment_status, notes, order_items(product_name, variant_label, quantity, unit_price)",
     )
     .order("pickup_date", { ascending: true })
     .order("pickup_time", { ascending: true });
@@ -81,6 +84,7 @@ export async function getOrders(
     serviceFee: order.service_fee,
     total: order.total,
     status: order.status,
+    paymentStatus: order.payment_status,
     notes: order.notes,
     itemCount: order.order_items.reduce((sum, item) => sum + item.quantity, 0),
     items: order.order_items.map((item) => ({

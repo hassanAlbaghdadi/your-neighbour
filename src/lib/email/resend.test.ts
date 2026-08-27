@@ -9,7 +9,8 @@ vi.mock("resend", () => ({
   },
 }));
 
-const { sendCustomerReceipt, sendOwnerAlert } = await import("./resend");
+const { sendCustomerReceipt, sendOwnerAlert, sendPaymentFailedNotification } =
+  await import("./resend");
 
 const SETTINGS = {
   businessName: "Your Neighbour",
@@ -131,5 +132,96 @@ describe("order email sender address", () => {
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({ replyTo: SETTINGS.contactEmail }),
     );
+  });
+});
+
+describe("HTML email bodies", () => {
+  beforeEach(() => {
+    sendMock.mockReset();
+    sendMock.mockResolvedValue({ id: "sent" });
+    vi.stubEnv("RESEND_FROM_EMAIL", "Your Neighbour <orders@example.com>");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("sends both html and text on every template", async () => {
+    await sendCustomerReceipt(ORDER, SETTINGS);
+    await sendOwnerAlert(ORDER, SETTINGS);
+    await sendPaymentFailedNotification(ORDER, SETTINGS);
+
+    for (const call of sendMock.mock.calls) {
+      expect(typeof call[0].html).toBe("string");
+      expect(call[0].html.length).toBeGreaterThan(0);
+      expect(typeof call[0].text).toBe("string");
+      expect(call[0].text.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("carries the same order number the confirmation page tells customers to quote", async () => {
+    await sendCustomerReceipt(ORDER, SETTINGS);
+    const { html, text } = sendMock.mock.calls[0][0];
+
+    // get-order.ts / confirmation page use `id.slice(0, 8)` — see
+    // src/app/confirmation/[orderId]/page.tsx.
+    const expected = ORDER.id.slice(0, 8);
+    expect(html).toContain(`Order #${expected}`);
+    expect(text).toContain(`Order #${expected}`);
+  });
+
+  // The name and notes fields are the only genuinely customer-supplied
+  // strings that reach an email, and unlike JSX nothing escapes them
+  // automatically in a hand-built HTML string. A name or note containing
+  // markup must render as inert text, not be interpreted by the mail
+  // client — this is the property the whole html feature depends on being
+  // safe to ship at all.
+  it("escapes a customer-supplied note in the html body", async () => {
+    const hostileOrder = {
+      ...ORDER,
+      notes: "<script>alert('hi')</script>",
+    } as unknown as Parameters<typeof sendCustomerReceipt>[0];
+
+    await sendCustomerReceipt(hostileOrder, SETTINGS);
+    const { html } = sendMock.mock.calls[0][0];
+
+    expect(html).not.toContain("<script>alert");
+    expect(html).toContain("&lt;script&gt;alert(&#39;hi&#39;)&lt;/script&gt;");
+  });
+
+  // The owner alert is the one template that prints the customer's full
+  // name rather than just the first word of it (the receipt's greeting
+  // only ever sees customerName.split(" ")[0]), so it's the site that
+  // actually exercises escaping a name containing both markup and a space.
+  it("escapes a customer-supplied name in the owner alert", async () => {
+    const hostileOrder = {
+      ...ORDER,
+      customerName: "<img src=x onerror=alert(1)> Jane",
+    } as unknown as Parameters<typeof sendOwnerAlert>[0];
+
+    await sendOwnerAlert(hostileOrder, SETTINGS);
+    const { html } = sendMock.mock.calls[0][0];
+
+    expect(html).not.toContain("<img src=x onerror=");
+    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt; Jane");
+  });
+
+  it("escapes an admin-entered pickup address the same way", async () => {
+    await sendCustomerReceipt(ORDER, {
+      ...SETTINGS,
+      pickupAddress: '123 Main St <b>Unit 2</b>',
+    });
+    const { html } = sendMock.mock.calls[0][0];
+
+    expect(html).not.toContain("<b>Unit 2</b>");
+    expect(html).toContain("&lt;b&gt;Unit 2&lt;/b&gt;");
+  });
+
+  it("includes the 'reply to this email' line on the receipt when a contact address is configured", async () => {
+    await sendCustomerReceipt(ORDER, SETTINGS);
+    const { html, text } = sendMock.mock.calls[0][0];
+
+    expect(html).toMatch(/Need to change or cancel\?/);
+    expect(text).toMatch(/Need to change or cancel\?/);
   });
 });

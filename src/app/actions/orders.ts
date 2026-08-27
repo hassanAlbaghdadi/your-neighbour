@@ -48,35 +48,44 @@ export async function createOrderAction(
     };
   }
 
-  // Checked on both axes because either alone is easy to slip: one IP can
-  // cycle through throwaway emails, and one email can be submitted from a
-  // pool of addresses.
-  const withinLimits = await checkRateLimits([
-    {
-      scope: "order:ip",
-      identifier: await getClientIp(),
-      limit: ORDERS_PER_IP_PER_HOUR,
-      windowSeconds: 3600,
-    },
-    {
-      scope: "order:email",
-      identifier: parsed.data.customerEmail.toLowerCase(),
-      limit: ORDERS_PER_EMAIL_PER_HOUR,
-      windowSeconds: 3600,
-    },
-  ]);
-  if (!withinLimits) {
-    return {
-      success: false,
-      error:
-        "That's a lot of orders in a short time. Please wait a little while before placing another, or get in touch and we'll sort it out.",
-    };
-  }
-
   try {
     const order = await processNewOrder(parsed.data);
     if (order.paymentStatus === "paid") {
       return { success: true, data: { order, checkoutUrl: null } };
+    }
+
+    // Checked here rather than before processNewOrder: the business-rule
+    // rejections it throws for (blackout date, inside the notice window,
+    // fully booked, an item withdrawn) are walls a customer can hit through
+    // no fault of their own, several times, while placing zero real orders.
+    // Counting those against the limit could lock someone out of ordering
+    // entirely without them ever having consumed a pickup slot. This only
+    // runs once an order has actually reserved one.
+    //
+    // Checked on both axes because either alone is easy to slip: one IP can
+    // cycle through throwaway emails, and one email can be submitted from a
+    // pool of addresses.
+    const withinLimits = await checkRateLimits([
+      {
+        scope: "order:ip",
+        identifier: await getClientIp(),
+        limit: ORDERS_PER_IP_PER_HOUR,
+        windowSeconds: 3600,
+      },
+      {
+        scope: "order:email",
+        identifier: parsed.data.customerEmail.toLowerCase(),
+        limit: ORDERS_PER_EMAIL_PER_HOUR,
+        windowSeconds: 3600,
+      },
+    ]);
+    if (!withinLimits) {
+      await releaseUnstartedReservation(order.id);
+      return {
+        success: false,
+        error:
+          "That's a lot of orders in a short time. Please wait a little while before placing another, or get in touch and we'll sort it out.",
+      };
     }
 
     try {
@@ -91,6 +100,15 @@ export async function createOrderAction(
     }
   } catch (error) {
     if (error instanceof OrderError) {
+      // Logged, not just returned. These are the walls a real customer hits
+      // -- fully booked, too little notice, an item withdrawn since they
+      // added it -- and every one of them ends a checkout that got as far as
+      // filling in the whole form. Without this line they leave no trace
+      // anywhere: no row, no event, nothing to explain a quiet week.
+      console.warn("Order rejected:", {
+        reason: error.message,
+        field: error.field,
+      });
       return {
         success: false,
         error: error.message,

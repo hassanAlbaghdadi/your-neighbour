@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { track } from "@/lib/analytics";
 
 export function StoryCta() {
   return (
@@ -14,7 +17,9 @@ export function StoryCta() {
             it up.
           </p>
           <Button asChild size="lg" className="mt-7">
-            <Link href="/#menu">See the menu</Link>
+            <Link href="/#menu" onClick={() => track("story_cta_click")}>
+              See the menu
+            </Link>
           </Button>
         </div>
       </div>

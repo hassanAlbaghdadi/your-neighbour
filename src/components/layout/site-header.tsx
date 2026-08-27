@@ -105,7 +105,7 @@ export function SiteHeader() {
               <a
                 href={INSTAGRAM_URL}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="me noopener noreferrer"
                 onClick={() => track("instagram_click", { location: "header" })}
               >
                 <InstagramIcon />
@@ -172,7 +172,7 @@ export function SiteHeader() {
             <a
               href={INSTAGRAM_URL}
               target="_blank"
-              rel="noopener noreferrer"
+              rel="me noopener noreferrer"
               onClick={() => track("instagram_click", { location: "mobile_nav" })}
               className="mt-1 flex items-center gap-2 rounded-md px-2 py-2.5 text-base font-medium text-foreground transition-colors hover:bg-muted"
             >

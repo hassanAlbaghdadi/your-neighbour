@@ -27,6 +27,7 @@ const { createCheckoutSessionForOrder } = await import("./create-checkout-sessio
 
 const order: OrderResult = {
   id: "11111111-1111-4111-8111-111111111111",
+  createdAt: "2026-08-18T14:00:00.000Z",
   customerName: "Jane Doe",
   customerEmail: "jane@example.com",
   customerPhone: "5551234567",
@@ -112,6 +113,33 @@ describe("createCheckoutSessionForOrder", () => {
       // retry returns the existing session instead of leaving a second
       // live one behind for the same order.
       { idempotencyKey: `checkout_session_${order.id}` },
+    );
+  });
+
+  // Regression: `expires_at` used to be computed from Date.now(), which moved
+  // between attempts while the idempotency key stayed fixed. Stripe rejects a
+  // reused key whose parameters differ, so every retry of a checkout failed
+  // permanently -- the exact opposite of what the key is there to do. Two
+  // calls for the same order must send byte-identical parameters.
+  it("sends the same expires_at on every attempt for one order", async () => {
+    createSessionMock.mockResolvedValue({
+      id: "cs_test_retry",
+      url: "https://checkout.stripe.test/cs_test_retry",
+    });
+
+    await createCheckoutSessionForOrder(order);
+    const first = createSessionMock.mock.calls[0][0].expires_at;
+
+    await createCheckoutSessionForOrder(order);
+    const second = createSessionMock.mock.calls[1][0].expires_at;
+
+    expect(second).toBe(first);
+    expect(first).toBe(
+      Math.floor(new Date(order.createdAt).getTime() / 1000) + 35 * 60,
+    );
+    // Both attempts reuse the one key, which is only safe because of the above.
+    expect(createSessionMock.mock.calls[0][1]).toEqual(
+      createSessionMock.mock.calls[1][1],
     );
   });
 

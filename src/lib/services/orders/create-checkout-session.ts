@@ -16,7 +16,17 @@ import type { OrderResult } from "@/lib/services/orders/create-order";
 // Back here rather than in a shared module: it was briefly lifted out so
 // checkout could quote the number to the customer, and that sentence is
 // gone. Nothing outside this file needs it.
-const SESSION_EXPIRY_SECONDS = 30 * 60;
+// Derived from the order's own created_at rather than the wall clock, and
+// the reason is the idempotency key below: Stripe rejects a reused key whose
+// parameters differ, so an `expires_at` computed from Date.now() moved by a
+// second between attempts and made every retry fail permanently. Anchoring it
+// to the order makes retries send byte-identical parameters.
+//
+// 35 rather than 30 minutes buys the headroom that costs: Stripe also rejects
+// an `expires_at` less than 30 minutes out, and the session is created a beat
+// after the row is inserted. 35 keeps a first attempt comfortably valid while
+// staying stable across retries.
+const SESSION_EXPIRY_SECONDS = 35 * 60;
 
 async function getBaseUrl(): Promise<string> {
   // A configured origin wins over the request's own headers. These URLs
@@ -81,7 +91,9 @@ export async function createCheckoutSessionForOrder(
     line_items: lineItems,
     success_url: `${baseUrl}/confirmation/${order.id}`,
     cancel_url: `${baseUrl}/checkout`,
-    expires_at: Math.floor(Date.now() / 1000) + SESSION_EXPIRY_SECONDS,
+    expires_at:
+      Math.floor(new Date(order.createdAt).getTime() / 1000) +
+      SESSION_EXPIRY_SECONDS,
   }, {
     // Keyed on the order, which is itself client-generated and stable
     // across resubmits, so a retried action returns the session that

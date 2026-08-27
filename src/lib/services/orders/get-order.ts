@@ -40,6 +40,7 @@ export async function getOrderById(id: string): Promise<OrderResult | null> {
 
   return {
     id: order.id,
+    createdAt: order.created_at,
     customerName: order.customer_name,
     customerEmail: order.customer_email,
     customerPhone: order.customer_phone,

@@ -5,6 +5,7 @@ import { SERVICE_FEE_LABEL } from "@/lib/pricing/order-totals";
 import type { OrderResult } from "@/lib/services/orders/create-order";
 import type { StoreSettings } from "@/lib/services/settings/get-settings";
 import { formatPickupDate, formatPickupTime } from "@/lib/time";
+import { SITE_URL } from "@/lib/site";
 
 /**
  * Resend's shared sandbox sender. It requires no domain verification,
@@ -50,11 +51,19 @@ function fromEmail(): string {
   return SANDBOX_FROM_EMAIL;
 }
 
+// The 8-char id shown everywhere else a customer or the owner might need to
+// reference an order — the confirmation page, the admin list. Emails use
+// the same slice so "quote order #a1b2c3d4" on the confirmation page names
+// something the receipt actually carries too.
+function orderNumber(order: OrderResult): string {
+  return order.id.slice(0, 8);
+}
+
 function formatItemsList(items: OrderResult["items"]): string {
   return items
     .map(
       (item) =>
-        `${item.quantity} x ${item.productName} — ${formatPrice(item.unitPrice * item.quantity)}`,
+        `${item.quantity} x ${item.productName}${item.variantLabel ? ` — ${item.variantLabel}` : ""} — ${formatPrice(item.unitPrice * item.quantity)}`,
     )
     .join("\n");
 }
@@ -84,6 +93,147 @@ Total: ${formatPrice(order.total)}`;
   return `Total: ${formatPrice(order.total)}`;
 }
 
+// ---------------------------------------------------------------------------
+// HTML rendering
+//
+// Every send below carries both `text` and `html`: `text` is what renders
+// when a client can't or won't render HTML, `html` is what most inboxes
+// actually show. One shared shell keeps the three templates looking like
+// the same business sent them, without a templating dependency for three
+// emails a week.
+//
+// Written as a complete, self-contained HTML document (own <head>, inline
+// styles throughout) because an email client renders `html` as its own
+// document, not injected into a host page — there is no outer stylesheet
+// to inherit from, and several major clients (Gmail chief among them) strip
+// a <style> block from <head> entirely. CSS custom properties are avoided
+// for the same reason: Outlook's rendering engine doesn't support var(), so
+// the brand tokens from globals.css are inlined here as literal hex values
+// instead of shared with it.
+// ---------------------------------------------------------------------------
+
+const BRAND = {
+  espresso900: "#2a211d",
+  espresso700: "#40312c",
+  cream50: "#fbf8f3",
+  terracotta600: "#b35b37",
+  muted: "#8a7d72",
+  border: "#e5ded6",
+} as const;
+
+const FONT_SANS =
+  "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+const FONT_SERIF = "Georgia,'Times New Roman',serif";
+
+/**
+ * Escapes the handful of characters that matter in HTML text content.
+ *
+ * Needed because, unlike everywhere else in the app, nothing here is JSX —
+ * React escapes interpolated text automatically; a hand-built HTML string
+ * does not. Applied to every value below that a customer or the owner
+ * typed themselves (name, notes) or that comes from the admin-editable
+ * settings table (business name, pickup address) — anything that isn't a
+ * number or a value already produced by formatPrice/formatPickupDate.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function itemsTableHtml(items: OrderResult["items"]): string {
+  const rows = items
+    .map((item, index) => {
+      const isLast = index === items.length - 1;
+      const border = isLast ? "" : `border-bottom:1px solid ${BRAND.border};`;
+      const label = item.variantLabel
+        ? `${escapeHtml(item.productName)} <span style="color:${BRAND.muted};">— ${escapeHtml(item.variantLabel)}</span>`
+        : escapeHtml(item.productName);
+      return `<tr>
+        <td style="padding:9px 0;${border}font-size:14px;color:${BRAND.espresso900};">${item.quantity} &times; ${label}</td>
+        <td style="padding:9px 0;${border}font-size:14px;color:${BRAND.espresso900};text-align:right;white-space:nowrap;">${formatPrice(item.unitPrice * item.quantity)}</td>
+      </tr>`;
+    })
+    .join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows}</table>`;
+}
+
+function totalsTableHtml(order: OrderResult): string {
+  const row = (label: string, value: string, strong = false) => `<tr>
+    <td style="padding:${strong ? "10px" : "2px"} 0 2px;${strong ? `border-top:1px solid ${BRAND.border};` : ""}font-size:${strong ? "16px" : "14px"};font-weight:${strong ? "700" : "400"};color:${strong ? BRAND.espresso900 : BRAND.muted};">${label}</td>
+    <td style="padding:${strong ? "10px" : "2px"} 0 2px;${strong ? `border-top:1px solid ${BRAND.border};` : ""}font-size:${strong ? "16px" : "14px"};font-weight:${strong ? "700" : "400"};color:${strong ? BRAND.espresso900 : BRAND.muted};text-align:right;">${value}</td>
+  </tr>`;
+  const rows =
+    order.serviceFee > 0
+      ? row("Subtotal", formatPrice(order.subtotal)) +
+        row(SERVICE_FEE_LABEL, formatPrice(order.serviceFee)) +
+        row("Total", formatPrice(order.total), true)
+      : row("Total", formatPrice(order.total), true);
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:2px;">${rows}</table>`;
+}
+
+/** A muted, boxed callout — used for the pickup details and, when present, the customer's notes. */
+function calloutHtml(label: string, lines: string[]): string {
+  const body = lines
+    .map(
+      (line, i) =>
+        `<div style="font-size:14px;color:${i === 0 ? BRAND.espresso900 : BRAND.espresso700};${i > 0 ? "margin-top:2px;" : ""}">${line}</div>`,
+    )
+    .join("");
+  return `<div style="margin-top:20px;padding:14px 16px;background:${BRAND.cream50};border-radius:8px;">
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${BRAND.muted};margin-bottom:4px;">${label}</div>
+    ${body}
+  </div>`;
+}
+
+interface EmailShellOptions {
+  businessName: string;
+  /** Rendered as the body's opening line, in the brand serif, e.g. "Order confirmed". */
+  heading: string;
+  bodyHtml: string;
+  /** Small print at the very bottom — order number, contact address. */
+  footerHtml: string;
+}
+
+function emailShell({
+  businessName,
+  heading,
+  bodyHtml,
+  footerHtml,
+}: EmailShellOptions): string {
+  const safeBusinessName = escapeHtml(businessName);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>${safeBusinessName}</title>
+</head>
+<body style="margin:0;padding:32px 16px;background:${BRAND.cream50};font-family:${FONT_SANS};">
+  <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid ${BRAND.border};border-radius:12px;overflow:hidden;">
+    <div style="background:${BRAND.espresso900};padding:22px 32px;text-align:center;">
+      <img src="${SITE_URL}/brand/mark-white.png" width="28" height="28" alt="" style="vertical-align:middle;margin-right:8px;border:0;">
+      <span style="font-family:${FONT_SERIF};font-size:19px;font-weight:600;color:${BRAND.cream50};letter-spacing:0.01em;vertical-align:middle;">${safeBusinessName}</span>
+    </div>
+    <div style="padding:28px 32px;">
+      <h1 style="margin:0 0 18px;font-family:${FONT_SERIF};font-size:21px;font-weight:600;color:${BRAND.espresso900};">${heading}</h1>
+      ${bodyHtml}
+    </div>
+    <div style="padding:16px 32px;border-top:1px solid ${BRAND.border};font-size:12px;line-height:1.6;color:${BRAND.muted};text-align:center;">
+      ${footerHtml}
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// ---------------------------------------------------------------------------
+
 /**
  * The customer's receipt.
  *
@@ -101,6 +251,27 @@ export async function sendCustomerReceipt(
   const { businessName, contactEmail, pickupAddress } = settings;
   const resend = new Resend(process.env.RESEND_API_KEY);
   const firstName = order.customerName.split(" ")[0];
+  const changeOrCancel = `Need to change or cancel? Just reply to this email${contactEmail ? ` or write to ${contactEmail}` : ""}.`;
+
+  const pickupLines = [
+    `${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}`,
+    ...(pickupAddress ? [escapeHtml(pickupAddress)] : []),
+  ];
+
+  const html = emailShell({
+    businessName,
+    heading: "Order confirmed",
+    bodyHtml: `
+      <p style="margin:0 0 4px;font-size:15px;color:${BRAND.espresso900};">Hi ${escapeHtml(firstName)}, thanks for your order — here&rsquo;s your receipt.</p>
+      <p style="margin:0 0 20px;font-size:13px;color:${BRAND.muted};">Order #${orderNumber(order)}</p>
+      ${itemsTableHtml(order.items)}
+      ${totalsTableHtml(order)}
+      ${calloutHtml("Pickup", pickupLines)}
+      ${order.notes ? calloutHtml("Your notes", [escapeHtml(order.notes)]) : ""}
+      <p style="margin:24px 0 0;font-size:13px;color:${BRAND.muted};">${changeOrCancel}</p>
+    `,
+    footerHtml: `See you soon!<br>${escapeHtml(businessName)}`,
+  });
 
   await resend.emails.send({
     from: fromEmail(),
@@ -114,10 +285,13 @@ export async function sendCustomerReceipt(
     // repointing replies is a settings change, not a code change.
     ...(contactEmail && { replyTo: contactEmail }),
     to: order.customerEmail,
-    subject: `Your ${businessName} order is confirmed`,
+    subject: `${businessName} — your order is confirmed`,
+    html,
     text: `Hi ${firstName},
 
-Thanks for your order! Here's your receipt:
+Thanks for your order! Here's your receipt.
+
+Order #${orderNumber(order)}
 
 ${formatItemsList(order.items)}
 
@@ -127,6 +301,8 @@ Pickup: ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickup
       pickupAddress ? `\nWhere: ${pickupAddress}` : ""
     }
 ${order.notes ? `\nYour notes: ${order.notes}\n` : ""}
+${changeOrCancel}
+
 See you soon!
 ${businessName}`,
   });
@@ -145,6 +321,25 @@ export async function sendOwnerAlert(
   const ownerEmail = settings.contactEmail;
   const resend = new Resend(process.env.RESEND_API_KEY);
 
+  const html = emailShell({
+    businessName: settings.businessName,
+    heading: "New order to bake",
+    bodyHtml: `
+      <p style="margin:0 0 20px;font-size:13px;color:${BRAND.muted};">Order #${orderNumber(order)}</p>
+      ${calloutHtml("Customer", [
+        escapeHtml(order.customerName),
+        escapeHtml(order.customerEmail),
+        escapeHtml(order.customerPhone),
+      ])}
+      ${calloutHtml("Pickup", [`${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}`])}
+      <div style="margin-top:20px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${BRAND.muted};margin-bottom:8px;">Items to bake</div>
+      ${itemsTableHtml(order.items)}
+      ${totalsTableHtml(order)}
+      ${order.notes ? calloutHtml("Customer notes", [escapeHtml(order.notes)]) : ""}
+    `,
+    footerHtml: `${escapeHtml(settings.businessName)} · order notification`,
+  });
+
   await resend.emails.send({
     from: fromEmail(),
     // Not load-bearing the way the customer-facing sends are — nobody
@@ -154,7 +349,10 @@ export async function sendOwnerAlert(
     replyTo: ownerEmail,
     to: ownerEmail,
     subject: `New order from ${order.customerName} — pickup ${formatPickupDate(order.pickupDate)}`,
+    html,
     text: `New order received.
+
+Order #${orderNumber(order)}
 
 Customer: ${order.customerName}
 Email: ${order.customerEmail}
@@ -189,14 +387,31 @@ export async function sendPaymentFailedNotification(
   const { businessName, contactEmail } = settings;
   const resend = new Resend(process.env.RESEND_API_KEY);
   const firstName = order.customerName.split(" ")[0];
+  const helpLine = `If you think this is a mistake, just reply to this email${contactEmail ? ` or reach us at ${contactEmail}` : ""} and we'll help sort it out.`;
+
+  const html = emailShell({
+    businessName,
+    heading: "Payment didn't go through",
+    bodyHtml: `
+      <p style="margin:0 0 4px;font-size:15px;color:${BRAND.espresso900};">Hi ${escapeHtml(firstName)},</p>
+      <p style="margin:0 0 16px;font-size:14px;color:${BRAND.espresso700};">Unfortunately your payment didn&rsquo;t go through, so we&rsquo;ve had to release your pickup slot for ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}.</p>
+      <p style="margin:0 0 20px;padding:10px 14px;background:${BRAND.cream50};border-radius:8px;font-size:14px;font-weight:600;color:${BRAND.espresso900};">You have not been charged.</p>
+      <p style="margin:0 0 16px;font-size:14px;color:${BRAND.espresso700};">If you'd still like these items, you're very welcome to place the order again:</p>
+      ${itemsTableHtml(order.items)}
+      ${totalsTableHtml(order)}
+      <p style="margin:24px 0 0;font-size:13px;color:${BRAND.muted};">${helpLine}</p>
+    `,
+    footerHtml: escapeHtml(businessName),
+  });
 
   await resend.emails.send({
     from: fromEmail(),
-    // The copy below promises "just reply to this email" — this is what
+    // The copy above promises "just reply to this email" — this is what
     // makes that true, same reasoning as sendCustomerReceipt above.
     ...(contactEmail && { replyTo: contactEmail }),
     to: order.customerEmail,
-    subject: `Your ${businessName} order couldn't be completed`,
+    subject: `${businessName} — your order couldn't be completed`,
+    html,
     text: `Hi ${firstName},
 
 Unfortunately your payment didn't go through, so we've had to release your
@@ -209,7 +424,7 @@ ${formatItemsList(order.items)}
 
 ${formatTotals(order)}
 
-If you think this is a mistake, just reply to this email${contactEmail ? ` or reach us at ${contactEmail}` : ""} and we'll help sort it out.
+${helpLine}
 
 ${businessName}`,
   });

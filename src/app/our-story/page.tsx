@@ -7,6 +7,15 @@ import { NarrativeBeat } from "@/components/story/narrative-beat";
 import { PullQuote } from "@/components/story/pull-quote";
 import { StoryCta } from "@/components/story/story-cta";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Our Story | Your Neighbour, Halifax",
+  description:
+    "How Sarah brought her mum's Khaliat El Nahal recipe from Yemen to a home bakery in Halifax's North End — one small batch at a time.",
+  alternates: { canonical: "/our-story" },
+};
+
 export default async function OurStoryPage() {
   const [products, homepagePhotos, storyPhotos] = await Promise.all([
     getProducts(),
@@ -81,7 +90,7 @@ export default async function OurStoryPage() {
         </p>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           What started as something Sarah made for herself, then for family
-          and friends, eventually became Your Neighbour — a small homegrown
+          and friends, eventually became Your Neighbour — a small home
           bakery.
         </p>
       </NarrativeBeat>

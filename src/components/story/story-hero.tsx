@@ -1,11 +1,26 @@
+"use client";
+
+import { useEffect } from "react";
 import Image from "next/image";
 import { ImageOff } from "lucide-react";
+import { trackOnce } from "@/lib/analytics";
 
 interface StoryHeroProps {
   photo: { src: string; alt: string } | null;
 }
 
 export function StoryHero({ photo }: StoryHeroProps) {
+  // Deliberately its own event, not a reuse of hero_view: the header
+  // already fires hero_view/hero_exit on any page with id="hero" (this
+  // section included), but trackOnce dedupes by event name for the whole
+  // browser session -- so a visitor who saw the homepage hero first (the
+  // common path) would never get a record of reaching this page at all.
+  // Verified live: fresh session -> hero_view fires here; homepage visited
+  // first in the same session -> nothing does.
+  useEffect(() => {
+    trackOnce("story_view");
+  }, []);
+
   return (
     <section
       id="hero"
@@ -37,7 +52,7 @@ export function StoryHero({ photo }: StoryHeroProps) {
           It started with one tray, for one neighbour.
         </h1>
         <p className="mt-4 max-w-md text-base text-cream-50/85 sm:text-lg">
-          Your Neighbour is Sarah’s kitchen in the North End — no
+          Your Neighbour is Sarah’s kitchen in Halifax’s North End — no
           storefront, no shelf, just stuffed bread and hot karak tea baked to order for the people down the street.
         </p>
       </div>
