@@ -28,6 +28,13 @@ export interface OrderListItem {
 interface GetOrdersFilter {
   status?: OrderStatus;
   pickupDate?: string;
+  /**
+   * The admin's forward book: every paid order still open, regardless of
+   * date. Excludes unpaid rows -- an order exists before Stripe confirms,
+   * so an abandoned checkout would otherwise sit in the list as a phantom
+   * for up to ~30 minutes until the webhook cancels it.
+   */
+  openOnly?: boolean;
 }
 
 interface OrderRow {
@@ -68,6 +75,12 @@ export async function getOrders(
   }
   if (filter.pickupDate) {
     query = query.eq("pickup_date", filter.pickupDate);
+  }
+  if (filter.openOnly) {
+    query = query
+      .eq("payment_status", "paid")
+      .neq("status", "Fulfilled")
+      .neq("status", "Cancelled");
   }
 
   const { data, error } = await query;

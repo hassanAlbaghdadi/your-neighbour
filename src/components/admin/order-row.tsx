@@ -4,14 +4,20 @@ import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
-import { SERVICE_FEE_LABEL } from "@/lib/pricing/order-totals";
 import { cn, formatPrice } from "@/lib/utils";
 import type { OrderListItem } from "@/lib/services/orders/get-orders";
 
-export function OrderRow({ order }: { order: OrderListItem }) {
+export function OrderRow({
+  order,
+  overdue = false,
+}: {
+  order: OrderListItem;
+  /** Pickup date has passed and the order still isn't closed out. Styling only -- no new status. */
+  overdue?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const hasDetails =
-    order.items.length > 0 || !!order.notes || order.serviceFee > 0;
+  const hasDetails = order.items.length > 0 || !!order.notes;
+  const dialableCustomerPhone = order.customerPhone.replace(/[^\d+]/g, "");
 
   return (
     <>
@@ -30,9 +36,26 @@ export function OrderRow({ order }: { order: OrderListItem }) {
         </td>
         <td className="px-4 py-3">
           <div className="font-medium text-foreground">{order.customerName}</div>
-          <div className="text-xs text-muted-foreground">{order.customerPhone}</div>
+          {/* Phone is stored exactly as the customer typed it (parens, dashes,
+              spaces, an optional leading +), so it's displayed as-is; tel:/sms:
+              only need the digits (and a leading + if the customer gave one) to
+              dial correctly. */}
+          <div className="text-xs text-muted-foreground">
+            <a href={`tel:${dialableCustomerPhone}`} className="hover:text-foreground hover:underline">
+              {order.customerPhone}
+            </a>
+            {" · "}
+            <a href={`sms:${dialableCustomerPhone}`} className="hover:text-foreground hover:underline">
+              Text
+            </a>
+          </div>
         </td>
-        <td className="px-4 py-3 whitespace-nowrap text-foreground">
+        <td
+          className={cn(
+            "px-4 py-3 whitespace-nowrap text-foreground",
+            overdue && "font-medium text-destructive",
+          )}
+        >
           {format(parseISO(order.pickupDate), "MMM d")} · {order.pickupTime}
         </td>
         <td className="px-4 py-3 text-foreground">{order.itemCount}</td>
@@ -44,54 +67,46 @@ export function OrderRow({ order }: { order: OrderListItem }) {
       {expanded && hasDetails && (
         <tr className="bg-muted/40">
           <td className="px-2 py-3" />
+          {/* flex+gap spaces the item list and the note regardless of which
+              one is actually present, instead of a margin conditioned on
+              what precedes it -- the previous version of this needed its
+              own case-by-case logic and was easy to get wrong the next time
+              what could be optional here changed (see git history). */}
           <td className="px-4 py-3" colSpan={5}>
-            {order.items.length > 0 && (
-              <ul className="flex flex-col gap-1">
-                {order.items.map((item, index) => (
-                  <li
-                    key={`${item.productName}::${item.variantLabel ?? ""}::${index}`}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="text-foreground">
-                      {item.productName}
-                      {item.variantLabel && (
-                        <span className="text-muted-foreground"> — {item.variantLabel}</span>
-                      )}
-                    </span>
-                    <span className="text-muted-foreground">×{item.quantity}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {/* The Total column is what the customer paid; this is the part
-                of it that isn't the food. Without it the admin list is the
-                one screen where the money doesn't reconcile against the
-                receipt the customer is holding. */}
-            {order.serviceFee > 0 && (
-              <p className={cn("text-sm", order.items.length > 0 && "mt-2")}>
-                <span className="font-medium text-foreground">
-                  {SERVICE_FEE_LABEL}:{" "}
-                </span>
-                <span className="text-muted-foreground">
-                  {formatPrice(order.serviceFee)} of {formatPrice(order.total)}
-                </span>
-              </p>
-            )}
-            {/* Spaced against whatever actually precedes it, which is now
-                either the item list or the fee line. Keying the margin off
-                the item count alone left the notes flush against the fee on
-                an order that has a fee and notes but no items. */}
-            {order.notes && (
-              <p
-                className={cn(
-                  "text-sm",
-                  (order.items.length > 0 || order.serviceFee > 0) && "mt-2",
-                )}
-              >
-                <span className="font-medium text-foreground">Note: </span>
-                <span className="text-muted-foreground">{order.notes}</span>
-              </p>
-            )}
+            <div className="flex max-w-md flex-col gap-3">
+              {order.items.length > 0 && (
+                <ul className="flex flex-col gap-1.5">
+                  {order.items.map((item, index) => (
+                    <li
+                      key={`${item.productName}::${item.variantLabel ?? ""}::${index}`}
+                      className="flex items-baseline justify-between gap-4"
+                    >
+                      <span className="text-sm text-foreground">
+                        {item.productName}
+                        {item.variantLabel && (
+                          <span className="text-muted-foreground"> — {item.variantLabel}</span>
+                        )}
+                      </span>
+                      {/* The quantity is the one number she's actually
+                          scanning for -- bumped up in size and weight so it
+                          reads before the product name does, not after. */}
+                      <span className="shrink-0 text-base font-semibold text-foreground tabular-nums">
+                        ×{item.quantity}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {/* Full contrast, not muted -- a customer note can be an
+                  allergy or a substitution, not just trivia, so it shouldn't
+                  read as less important than the line above it. */}
+              {order.notes && (
+                <p className="text-sm">
+                  <span className="font-medium text-foreground">Note: </span>
+                  <span className="text-foreground">{order.notes}</span>
+                </p>
+              )}
+            </div>
           </td>
         </tr>
       )}
