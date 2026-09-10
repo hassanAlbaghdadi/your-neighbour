@@ -38,6 +38,20 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
+    // Resize through Supabase Storage's own transformer, not Vercel's
+    // Image Optimization API — see src/lib/image/supabase-image-loader.ts
+    // for the why. The loader runs for every <Image>, so nothing hits
+    // /_next/image any more.
+    loader: "custom",
+    loaderFile: "./src/lib/image/supabase-image-loader.ts",
+    // The uploaded source photos top out around 2000px, so asking the
+    // transformer for anything wider just re-serves the same pixels. Cap
+    // the srcset there and drop the tiny breakpoints we never lay out at,
+    // which also keeps the number of distinct transform variants down.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    imageSizes: [128, 256, 384],
+    // Kept for defence-in-depth even though the custom loader bypasses the
+    // built-in optimizer that enforces it.
     remotePatterns: supabaseHostname
       ? [
           {
