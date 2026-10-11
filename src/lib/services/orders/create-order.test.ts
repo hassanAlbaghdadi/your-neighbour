@@ -20,6 +20,8 @@ const BASE_SETTINGS: StoreSettings = {
   minAdvanceHours: 0,
   pickupTimeSlots: ["10:00"],
   blackoutDates: [],
+  deliveryEnabled: false,
+  deliveryFee: 0,
 };
 
 const getSettingsMock = vi.fn(async () => BASE_SETTINGS);
@@ -353,5 +355,82 @@ describe("processNewOrder", () => {
 
     expect(result.id).toBe(baseInput.id);
     expect(rpcMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("processNewOrder delivery", () => {
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
+  beforeEach(() => {
+    fromMock.mockReset();
+    rpcMock.mockReset();
+    getSettingsMock.mockResolvedValue({
+      ...BASE_SETTINGS,
+      deliveryEnabled: true,
+      deliveryFee: 5,
+    });
+  });
+
+  const deliveryInput: CreateOrderInput = {
+    ...baseInput,
+    fulfillmentMethod: "delivery",
+    deliveryAddress: "  2145 Gottingen St, Halifax  ",
+  };
+
+  it("adds the fee from settings and stores the address", async () => {
+    setupSupabaseMocks();
+
+    await processNewOrder(deliveryInput);
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      "create_order_atomic",
+      expect.objectContaining({
+        // $16.00 of food, $0.80 service fee on the food only, $5.00 delivery.
+        p_order_row: expect.objectContaining({
+          subtotal: 16,
+          service_fee: 0.8,
+          delivery_fee: 5,
+          total: 21.8,
+          fulfillment_method: "delivery",
+          delivery_address: "2145 Gottingen St, Halifax",
+        }),
+      }),
+    );
+  });
+
+  it("refuses a delivery while the owner has delivery switched off", async () => {
+    getSettingsMock.mockResolvedValue(BASE_SETTINGS);
+    setupSupabaseMocks();
+
+    await expect(processNewOrder(deliveryInput)).rejects.toMatchObject({
+      field: "fulfillmentMethod",
+    });
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("treats an order with no method as a pickup, with no fee and no address", async () => {
+    // What a checkout page left open across the deploy sends.
+    setupSupabaseMocks();
+
+    await processNewOrder({ ...baseInput, deliveryAddress: "should be dropped" });
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      "create_order_atomic",
+      expect.objectContaining({
+        p_order_row: expect.objectContaining({
+          total: 16.8,
+          fulfillment_method: "pickup",
+          delivery_fee: 0,
+          delivery_address: null,
+        }),
+      }),
+    );
   });
 });

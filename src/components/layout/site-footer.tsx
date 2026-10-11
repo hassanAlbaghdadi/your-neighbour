@@ -11,12 +11,14 @@ interface SiteFooterProps {
   businessName: string;
   contactEmail: string;
   categories: { id: string; name: string }[];
+  deliveryEnabled?: boolean;
 }
 
 export function SiteFooter({
   businessName,
   contactEmail,
   categories,
+  deliveryEnabled = false,
 }: SiteFooterProps) {
   const year = new Date().getFullYear();
 
@@ -36,7 +38,11 @@ export function SiteFooter({
             </span>
           </Link>
           <p className="mt-3 max-w-xs text-sm text-cream-50/70">
-            Small-batch baked goods, made to order for pickup in Halifax&rsquo;s North End.
+            {deliveryEnabled ? (
+              <>Small-batch baked goods, made to order for pickup or delivery in Halifax.</>
+            ) : (
+              <>Small-batch baked goods, made to order for pickup in Halifax&rsquo;s North End.</>
+            )}
           </p>
           {/* The only route to Our Story that exists on every page. The
               header's link is `hidden sm:inline-block`, so on a phone the

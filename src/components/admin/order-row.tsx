@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Truck } from "lucide-react";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
 import { cn, formatPrice } from "@/lib/utils";
 import type { OrderListItem } from "@/lib/services/orders/get-orders";
@@ -16,7 +16,9 @@ export function OrderRow({
   overdue?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const hasDetails = order.items.length > 0 || !!order.notes;
+  const isDelivery = order.fulfillmentMethod === "delivery";
+  const hasDetails =
+    order.items.length > 0 || !!order.notes || !!order.deliveryAddress;
   const dialableCustomerPhone = order.customerPhone.replace(/[^\d+]/g, "");
 
   return (
@@ -57,6 +59,14 @@ export function OrderRow({
           )}
         >
           {format(parseISO(order.pickupDate), "MMM d")} · {order.pickupTime}
+          {/* Pickup stays unmarked — it's the default, so only the
+              exception carries a label. */}
+          {isDelivery && (
+            <div className="mt-0.5 flex items-center gap-1 text-xs font-medium text-terracotta-600">
+              <Truck className="size-3.5" aria-hidden="true" />
+              Delivery
+            </div>
+          )}
         </td>
         <td className="px-4 py-3 text-foreground">{order.itemCount}</td>
         <td className="px-4 py-3 text-foreground">{formatPrice(order.total)}</td>
@@ -74,6 +84,19 @@ export function OrderRow({
               what could be optional here changed (see git history). */}
           <td className="px-4 py-3" colSpan={5}>
             <div className="flex max-w-md flex-col gap-3">
+              {order.deliveryAddress && (
+                <p className="text-sm">
+                  <span className="font-medium text-foreground">Deliver to: </span>
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(order.deliveryAddress)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-foreground underline underline-offset-4"
+                  >
+                    {order.deliveryAddress}
+                  </a>
+                </p>
+              )}
               {order.items.length > 0 && (
                 <ul className="flex flex-col gap-1.5">
                   {order.items.map((item, index) => (

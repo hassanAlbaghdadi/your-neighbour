@@ -20,6 +20,8 @@ const SETTINGS = {
   minAdvanceHours: 48,
   pickupTimeSlots: ["09:00"],
   blackoutDates: [],
+  deliveryEnabled: false,
+  deliveryFee: 0,
 } satisfies StoreSettings;
 
 const ORDER = {

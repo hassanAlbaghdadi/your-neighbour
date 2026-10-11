@@ -25,7 +25,13 @@ const phoneField = z
     return digits >= 10 && digits <= 15;
   }, "Enter a valid phone number, including the area code");
 
-export const checkoutFormSchema = z.object({
+export const FULFILLMENT_METHODS = ["pickup", "delivery"] as const;
+
+const checkoutFields = z.object({
+  fulfillmentMethod: z.enum(FULFILLMENT_METHODS),
+  // Free text, no area check: Sarah phones anyone too far away. Only
+  // required for delivery — see requireDeliveryAddress below.
+  deliveryAddress: z.string().trim().max(300).optional().or(z.literal("")),
   customerName: z.string().min(2, "Enter your full name").max(100),
   customerEmail: z.string().email("Enter a valid email address"),
   customerPhone: phoneField,
@@ -34,13 +40,39 @@ export const checkoutFormSchema = z.object({
   notes: z.string().max(500).optional().or(z.literal("")),
 });
 
-export const createOrderInputSchema = checkoutFormSchema.extend({
-  id: z.string().uuid(),
-  items: z.array(orderItemSchema).min(1, "Your cart is empty"),
-});
+function requireDeliveryAddress(
+  value: { fulfillmentMethod: string; deliveryAddress?: string },
+  ctx: z.RefinementCtx,
+) {
+  if (value.fulfillmentMethod === "delivery" && !value.deliveryAddress?.trim()) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["deliveryAddress"],
+      message: "Enter your delivery address",
+    });
+  }
+}
+
+export const checkoutFormSchema = checkoutFields.superRefine(
+  requireDeliveryAddress,
+);
+
+export const createOrderInputSchema = checkoutFields
+  .extend({
+    id: z.string().uuid(),
+    items: z.array(orderItemSchema).min(1, "Your cart is empty"),
+    // Defaulted on the server only. A checkout page left open across the
+    // deploy that added delivery sends no method at all, and that customer
+    // was ordering a pickup.
+    fulfillmentMethod: z.enum(FULFILLMENT_METHODS).default("pickup"),
+  })
+  .superRefine(requireDeliveryAddress);
 
 export type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
-export type CreateOrderInput = z.infer<typeof createOrderInputSchema>;
+// The input side: fulfillmentMethod is optional here, and processNewOrder
+// treats a missing one as pickup — the same rule the schema's default
+// applies.
+export type CreateOrderInput = z.input<typeof createOrderInputSchema>;
 
 /**
  * Which field a server-side rejection belongs to.

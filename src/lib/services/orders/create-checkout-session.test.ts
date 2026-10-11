@@ -39,6 +39,9 @@ const order: OrderResult = {
   total: 25.2,
   status: "New",
   paymentStatus: "unpaid",
+  deliveryFee: 0,
+  fulfillmentMethod: "pickup",
+  deliveryAddress: null,
   items: [
     { productName: "Sourdough Loaf", variantLabel: "Large", quantity: 2, unitPrice: 8 },
     { productName: "Croissant", variantLabel: null, quantity: 1, unitPrice: 8 },
@@ -224,5 +227,49 @@ describe("createCheckoutSessionForOrder", () => {
     await expect(createCheckoutSessionForOrder(order)).rejects.toThrow(
       "Stripe did not return a checkout URL.",
     );
+  });
+});
+
+describe("createCheckoutSessionForOrder with delivery", () => {
+  beforeEach(() => {
+    createSessionMock.mockReset();
+    fromMock.mockReturnValue({ update: updateMock });
+    updateMock.mockReturnValue({ eq: eqMock });
+    eqMock.mockResolvedValue({ error: null });
+    createSessionMock.mockResolvedValue({
+      id: "cs_test_456",
+      url: "https://checkout.stripe.com/cs_test_456",
+    });
+  });
+
+  const deliveryOrder: OrderResult = {
+    ...order,
+    fulfillmentMethod: "delivery",
+    deliveryAddress: "2145 Gottingen St, Halifax",
+    deliveryFee: 5,
+    total: 30.2,
+  };
+
+  it("charges the stored delivery fee as its own line", async () => {
+    await createCheckoutSessionForOrder(deliveryOrder);
+
+    const [params] = createSessionMock.mock.calls[0] as [
+      { line_items: { price_data: { unit_amount: number; product_data: { name: string } } }[] },
+    ];
+    expect(params.line_items.at(-1)?.price_data).toEqual(
+      expect.objectContaining({
+        unit_amount: 500,
+        product_data: { name: "Delivery" },
+      }),
+    );
+  });
+
+  it("refuses to charge when the delivery fee isn't in the total", async () => {
+    // The guard that catches a delivery fee dropped on any path that
+    // rebuilds an order -- including a retry of one already placed.
+    await expect(
+      createCheckoutSessionForOrder({ ...deliveryOrder, total: 25.2 }),
+    ).rejects.toThrow(/Refusing to charge/);
+    expect(createSessionMock).not.toHaveBeenCalled();
   });
 });

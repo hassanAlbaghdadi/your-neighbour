@@ -10,6 +10,8 @@ const KEY_MAP: Record<keyof StoreSettings, string> = {
   minAdvanceHours: "min_advance_hours",
   pickupTimeSlots: "pickup_time_slots",
   blackoutDates: "blackout_dates",
+  deliveryEnabled: "delivery_enabled",
+  deliveryFee: "delivery_fee",
 };
 
 export async function updateSettings(settings: StoreSettings): Promise<void> {

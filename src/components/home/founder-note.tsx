@@ -7,6 +7,7 @@ import { track, trackOnce } from "@/lib/analytics";
 
 interface FounderNoteProps {
   minAdvanceHours: number;
+  deliveryEnabled?: boolean;
 }
 
 /**
@@ -26,7 +27,10 @@ interface FounderNoteProps {
  * "from the North End" is gone from the pickup half: the line directly above
  * it says North End, two lines apart.
  */
-export function FounderNote({ minAdvanceHours }: FounderNoteProps) {
+export function FounderNote({
+  minAdvanceHours,
+  deliveryEnabled = false,
+}: FounderNoteProps) {
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -82,7 +86,8 @@ export function FounderNote({ minAdvanceHours }: FounderNoteProps) {
         </p>
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Clock className="size-3.5 shrink-0 text-terracotta-600" />
-          Order {minAdvanceHours} hours ahead · Pickup only
+          Order {minAdvanceHours} hours ahead ·{" "}
+          {deliveryEnabled ? "Pickup or delivery" : "Pickup only"}
         </p>
       </div>
     </section>

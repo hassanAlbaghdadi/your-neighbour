@@ -1,7 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 import { formatPrice } from "@/lib/utils";
-import { SERVICE_FEE_LABEL } from "@/lib/pricing/order-totals";
+import { DELIVERY_FEE_LABEL, SERVICE_FEE_LABEL } from "@/lib/pricing/order-totals";
 import type { OrderResult } from "@/lib/services/orders/create-order";
 import type { StoreSettings } from "@/lib/services/settings/get-settings";
 import { formatPickupDate, formatPickupTime } from "@/lib/time";
@@ -59,6 +59,11 @@ function orderNumber(order: OrderResult): string {
   return order.id.slice(0, 8);
 }
 
+/** "Pickup" or "Delivery" — the word every handover line below leads with. */
+function handoverLabel(order: OrderResult): string {
+  return order.fulfillmentMethod === "delivery" ? "Delivery" : "Pickup";
+}
+
 function formatItemsList(items: OrderResult["items"]): string {
   return items
     .map(
@@ -85,10 +90,17 @@ function formatItemsList(items: OrderResult["items"]): string {
  * that is not. Every other render site guards the same direction.
  */
 function formatTotals(order: OrderResult): string {
-  if (order.serviceFee > 0) {
-    return `Subtotal: ${formatPrice(order.subtotal)}
-${SERVICE_FEE_LABEL}: ${formatPrice(order.serviceFee)}
-Total: ${formatPrice(order.total)}`;
+  if (order.serviceFee > 0 || order.deliveryFee > 0) {
+    return [
+      `Subtotal: ${formatPrice(order.subtotal)}`,
+      ...(order.serviceFee > 0
+        ? [`${SERVICE_FEE_LABEL}: ${formatPrice(order.serviceFee)}`]
+        : []),
+      ...(order.deliveryFee > 0
+        ? [`${DELIVERY_FEE_LABEL}: ${formatPrice(order.deliveryFee)}`]
+        : []),
+      `Total: ${formatPrice(order.total)}`,
+    ].join("\n");
   }
   return `Total: ${formatPrice(order.total)}`;
 }
@@ -167,9 +179,14 @@ function totalsTableHtml(order: OrderResult): string {
     <td style="padding:${strong ? "10px" : "2px"} 0 2px;${strong ? `border-top:1px solid ${BRAND.border};` : ""}font-size:${strong ? "16px" : "14px"};font-weight:${strong ? "700" : "400"};color:${strong ? BRAND.espresso900 : BRAND.muted};text-align:right;">${value}</td>
   </tr>`;
   const rows =
-    order.serviceFee > 0
+    order.serviceFee > 0 || order.deliveryFee > 0
       ? row("Subtotal", formatPrice(order.subtotal)) +
-        row(SERVICE_FEE_LABEL, formatPrice(order.serviceFee)) +
+        (order.serviceFee > 0
+          ? row(SERVICE_FEE_LABEL, formatPrice(order.serviceFee))
+          : "") +
+        (order.deliveryFee > 0
+          ? row(DELIVERY_FEE_LABEL, formatPrice(order.deliveryFee))
+          : "") +
         row("Total", formatPrice(order.total), true)
       : row("Total", formatPrice(order.total), true);
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:2px;">${rows}</table>`;
@@ -253,9 +270,15 @@ export async function sendCustomerReceipt(
   const firstName = order.customerName.split(" ")[0];
   const changeOrCancel = `Need to change or cancel? Just reply to this email${contactEmail ? ` or write to ${contactEmail}` : ""}.`;
 
+  const isDelivery = order.fulfillmentMethod === "delivery";
+  // Their door for a delivery, Sarah's for a pickup.
+  const address = isDelivery ? order.deliveryAddress : pickupAddress;
   const pickupLines = [
     `${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}`,
-    ...(pickupAddress ? [escapeHtml(pickupAddress)] : []),
+    ...(address ? [escapeHtml(address)] : []),
+    ...(isDelivery
+      ? ["We&rsquo;ll drop it off around then and text you when we&rsquo;re on the way."]
+      : []),
   ];
 
   const html = emailShell({
@@ -266,7 +289,7 @@ export async function sendCustomerReceipt(
       <p style="margin:0 0 20px;font-size:13px;color:${BRAND.muted};">Order #${orderNumber(order)}</p>
       ${itemsTableHtml(order.items)}
       ${totalsTableHtml(order)}
-      ${calloutHtml("Pickup", pickupLines)}
+      ${calloutHtml(handoverLabel(order), pickupLines)}
       ${order.notes ? calloutHtml("Your notes", [escapeHtml(order.notes)]) : ""}
       <p style="margin:24px 0 0;font-size:13px;color:${BRAND.muted};">${changeOrCancel}</p>
     `,
@@ -297,8 +320,8 @@ ${formatItemsList(order.items)}
 
 ${formatTotals(order)}
 
-Pickup: ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}${
-      pickupAddress ? `\nWhere: ${pickupAddress}` : ""
+${handoverLabel(order)}: ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}${
+      address ? `\nWhere: ${address}` : ""
     }
 ${order.notes ? `\nYour notes: ${order.notes}\n` : ""}
 ${changeOrCancel}
@@ -331,7 +354,10 @@ export async function sendOwnerAlert(
         escapeHtml(order.customerEmail),
         escapeHtml(order.customerPhone),
       ])}
-      ${calloutHtml("Pickup", [`${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}`])}
+      ${calloutHtml(handoverLabel(order), [
+        `${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}`,
+        ...(order.deliveryAddress ? [escapeHtml(order.deliveryAddress)] : []),
+      ])}
       <div style="margin-top:20px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${BRAND.muted};margin-bottom:8px;">Items to bake</div>
       ${itemsTableHtml(order.items)}
       ${totalsTableHtml(order)}
@@ -348,7 +374,7 @@ export async function sendOwnerAlert(
     // than the sending subdomain's void.
     replyTo: ownerEmail,
     to: ownerEmail,
-    subject: `New order from ${order.customerName} — pickup ${formatPickupDate(order.pickupDate)}`,
+    subject: `New order from ${order.customerName} — ${handoverLabel(order).toLowerCase()} ${formatPickupDate(order.pickupDate)}`,
     html,
     text: `New order received.
 
@@ -358,7 +384,9 @@ Customer: ${order.customerName}
 Email: ${order.customerEmail}
 Phone: ${order.customerPhone}
 
-Pickup: ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}
+${handoverLabel(order)}: ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}${
+      order.deliveryAddress ? `\nAddress: ${order.deliveryAddress}` : ""
+    }
 
 Items to bake:
 ${formatItemsList(order.items)}
@@ -394,7 +422,7 @@ export async function sendPaymentFailedNotification(
     heading: "Payment didn't go through",
     bodyHtml: `
       <p style="margin:0 0 4px;font-size:15px;color:${BRAND.espresso900};">Hi ${escapeHtml(firstName)},</p>
-      <p style="margin:0 0 16px;font-size:14px;color:${BRAND.espresso700};">Unfortunately your payment didn&rsquo;t go through, so we&rsquo;ve had to release your pickup slot for ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}.</p>
+      <p style="margin:0 0 16px;font-size:14px;color:${BRAND.espresso700};">Unfortunately your payment didn&rsquo;t go through, so we&rsquo;ve had to release your ${handoverLabel(order).toLowerCase()} slot for ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}.</p>
       <p style="margin:0 0 20px;padding:10px 14px;background:${BRAND.cream50};border-radius:8px;font-size:14px;font-weight:600;color:${BRAND.espresso900};">You have not been charged.</p>
       <p style="margin:0 0 16px;font-size:14px;color:${BRAND.espresso700};">If you'd still like these items, you're very welcome to place the order again:</p>
       ${itemsTableHtml(order.items)}
@@ -415,7 +443,7 @@ export async function sendPaymentFailedNotification(
     text: `Hi ${firstName},
 
 Unfortunately your payment didn't go through, so we've had to release your
-pickup slot for ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}.
+${handoverLabel(order).toLowerCase()} slot for ${formatPickupDate(order.pickupDate)} at ${formatPickupTime(order.pickupTime)}.
 
 You have not been charged. If you'd still like these items, you're very
 welcome to place the order again:

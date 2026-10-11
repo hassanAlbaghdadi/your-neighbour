@@ -21,9 +21,13 @@ import { track } from "@/lib/analytics";
 
 interface CartDrawerProps {
   minAdvanceHours: number;
+  deliveryEnabled?: boolean;
 }
 
-export function CartDrawer({ minAdvanceHours }: CartDrawerProps) {
+export function CartDrawer({
+  minAdvanceHours,
+  deliveryEnabled = false,
+}: CartDrawerProps) {
   // Checkout opens this same drawer as its "Edit order" affordance, so the
   // footer has to stop describing checkout as something still ahead of them.
   const onCheckout = usePathname() === "/checkout";
@@ -190,7 +194,9 @@ export function CartDrawer({ minAdvanceHours }: CartDrawerProps) {
             <p className="text-xs text-muted-foreground">
               {onCheckout
                 ? "Change quantities here, then close to finish your order."
-                : `Pickup only — orders need ${minAdvanceHours} hours’ notice. You’ll pick a day and time next.`}
+                : deliveryEnabled
+                  ? `Pickup or delivery — orders need ${minAdvanceHours} hours’ notice. You’ll choose at checkout.`
+                  : `Pickup only — orders need ${minAdvanceHours} hours’ notice. You’ll pick a day and time next.`}
             </p>
             <div className="flex items-center justify-between text-base font-medium text-foreground">
               <span>Subtotal</span>

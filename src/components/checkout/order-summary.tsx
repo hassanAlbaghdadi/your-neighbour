@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ChevronDown, ImageOff, Pencil } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 import {
+  DELIVERY_FEE_LABEL,
   SERVICE_FEE_RATE_LABEL,
   calculateOrderTotals,
   fromCents,
@@ -27,7 +28,14 @@ import { cn, formatPrice } from "@/lib/utils";
  * 558px run-up before the customer could touch anything. The total stays on
  * screen either way — that is the part they came here to check.
  */
-export function OrderSummary() {
+export function OrderSummary({
+  deliveryFee = 0,
+  isDelivery = false,
+}: {
+  /** Dollars; only passed while the customer has chosen delivery. */
+  deliveryFee?: number;
+  isDelivery?: boolean;
+}) {
   const { items, itemCount, subtotal, openCart } = useCart();
   const [expanded, setExpanded] = useState(false);
 
@@ -36,7 +44,10 @@ export function OrderSummary() {
   // a second implementation that agrees with it most of the time. Purely
   // for display — the server recomputes all of it from the database and
   // never trusts a number that came from here.
-  const { feeCents, totalCents } = calculateOrderTotals(toCents(subtotal));
+  const { feeCents, totalCents } = calculateOrderTotals(
+    toCents(subtotal),
+    isDelivery ? toCents(deliveryFee) : 0,
+  );
   const serviceFee = fromCents(feeCents);
   const total = fromCents(totalCents);
 
@@ -145,6 +156,14 @@ export function OrderSummary() {
             <span>{SERVICE_FEE_RATE_LABEL}</span>
             <span className="tabular-nums">{formatPrice(serviceFee)}</span>
           </div>
+          {isDelivery && (
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>{DELIVERY_FEE_LABEL}</span>
+              <span className="tabular-nums">
+                {deliveryFee > 0 ? formatPrice(deliveryFee) : "Free"}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between text-base font-medium text-foreground">
             <span>Total</span>
             <span className="tabular-nums">{formatPrice(total)}</span>
@@ -159,7 +178,9 @@ export function OrderSummary() {
             moment a fee appeared above it. Deliberately doesn't reprint the
             figure: it is already directly above, and on the button. */}
         <p className="mt-2 text-xs text-muted-foreground">
-          No tax or delivery — the total above is what you&rsquo;ll pay.
+          {isDelivery
+            ? "No tax — the total above is what you’ll pay."
+            : <>No tax or delivery — the total above is what you&rsquo;ll pay.</>}
         </p>
       </div>
     </aside>

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { AlertCircle, MapPin } from "lucide-react";
+import { AlertCircle, MapPin, Store, Truck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,8 +50,10 @@ import type { StoreSettings } from "@/lib/services/settings/get-settings";
 // Screen order, which is what "the first thing to fix" means to a customer
 // — not the schema's key order.
 const FIELD_FOCUS_ORDER = [
+  "fulfillmentMethod",
   "pickupDate",
   "pickupTime",
+  "deliveryAddress",
   "customerName",
   "customerEmail",
   "customerPhone",
@@ -72,10 +74,6 @@ interface CheckoutFormProps {
 export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
   const router = useRouter();
   const { items, itemCount, subtotal, clearCart } = useCart();
-  // What the customer is actually about to be charged. The submit button
-  // is the last figure before the Stripe redirect, so it has to be this one
-  // and not the subtotal — see order-summary.tsx for the shared arithmetic.
-  const total = fromCents(calculateOrderTotals(toCents(subtotal)).totalCents);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [dateOpen, setDateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -138,6 +136,11 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
     // simpler than racing it.
     shouldFocusError: false,
     defaultValues: {
+      // Pickup preselected, so with delivery switched off — or for anyone
+      // who never touches the choice — this form submits exactly what it
+      // did before delivery existed.
+      fulfillmentMethod: "pickup",
+      deliveryAddress: "",
       customerName: "",
       customerEmail: "",
       customerPhone: "",
@@ -148,6 +151,20 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
   });
 
   const pickupTime = useWatch({ control, name: "pickupTime" });
+  const fulfillmentMethod = useWatch({ control, name: "fulfillmentMethod" });
+  const isDelivery =
+    settings.deliveryEnabled && fulfillmentMethod === "delivery";
+  const handover = isDelivery ? "Delivery" : "Pickup";
+
+  // What the customer is actually about to be charged. The submit button
+  // is the last figure before the Stripe redirect, so it has to be this one
+  // and not the subtotal — see order-summary.tsx for the shared arithmetic.
+  const total = fromCents(
+    calculateOrderTotals(
+      toCents(subtotal),
+      isDelivery ? toCents(settings.deliveryFee) : 0,
+    ).totalCents,
+  );
   const [remembered, setRemembered] = useState(false);
 
   // Contact details from a previous order, restored after mount rather than
@@ -288,7 +305,11 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
       firstInvalid === "pickupTime"
         ? (pickupTimeGroupRef.current?.querySelector("button") ?? null)
         : document.getElementById(
-            firstInvalid === "pickupDate" ? "pickup-date" : firstInvalid,
+            firstInvalid === "pickupDate"
+              ? "pickup-date"
+              : firstInvalid === "fulfillmentMethod"
+                ? "fulfillmentMethod-pickup"
+                : firstInvalid,
           );
 
     target?.focus();
@@ -368,11 +389,70 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
           screen reader reaches the contents and total before the form,
           which is the same order a sighted phone user now gets. Desktop is
           unchanged: lg:order-2 sends it back to the right-hand column. */}
-      <OrderSummary />
+      <OrderSummary deliveryFee={settings.deliveryFee} isDelivery={isDelivery} />
 
       <FieldGroup className="lg:order-1">
+        {/* Only rendered once the owner switches delivery on. Native radios
+            styled as two cards: arrow keys, labels and screen-reader
+            announcements all come with the input rather than being rebuilt.
+            The fee sits on the card so the price is known before anyone
+            types an address. */}
+        {settings.deliveryEnabled && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 text-sm font-medium text-foreground">
+              How would you like it?
+            </legend>
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  { value: "pickup", label: "Pickup", note: "Free", Icon: Store },
+                  {
+                    value: "delivery",
+                    label: "Delivery",
+                    note:
+                      settings.deliveryFee > 0
+                        ? formatPrice(settings.deliveryFee)
+                        : "Free",
+                    Icon: Truck,
+                  },
+                ] as const
+              ).map(({ value, label, note, Icon }) => (
+                <label
+                  key={value}
+                  htmlFor={`fulfillmentMethod-${value}`}
+                  className={cn(
+                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border bg-card p-3 transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
+                    fulfillmentMethod === value
+                      ? "border-primary ring-1 ring-primary"
+                      : "border-input hover:border-foreground/30",
+                  )}
+                >
+                  <input
+                    id={`fulfillmentMethod-${value}`}
+                    type="radio"
+                    value={value}
+                    className="sr-only"
+                    {...register("fulfillmentMethod")}
+                  />
+                  <Icon className="size-5 shrink-0 text-foreground" aria-hidden="true" />
+                  <span className="flex flex-col">
+                    <span className="text-sm font-medium text-foreground">
+                      {label}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{note}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <FieldError
+              id="fulfillmentMethod-error"
+              errors={[errors.fulfillmentMethod]}
+            />
+          </fieldset>
+        )}
+
         <Field>
-          <FieldLabel htmlFor="pickup-date">Pickup date</FieldLabel>
+          <FieldLabel htmlFor="pickup-date">{handover} date</FieldLabel>
           <PickupDatePicker
             selectedDate={selectedDate}
             open={dateOpen}
@@ -406,7 +486,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
 
         {selectedDate && (
           <Field>
-            <FieldLabel id="pickup-time-label">Pickup time</FieldLabel>
+            <FieldLabel id="pickup-time-label">{handover} time</FieldLabel>
             {/* Labelled group rather than a bare div: this FieldLabel has no
                 htmlFor to bind to (the slots are buttons, not one input), so
                 without aria-labelledby the label announces as loose text and
@@ -458,7 +538,43 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
                 ))
               )}
             </div>
+            {/* Same slots as pickup; Sarah drops deliveries off around
+                then rather than to the minute, so the time is framed as
+                a guide, not a promise. */}
+            {isDelivery && (
+              <FieldDescription>
+                We&rsquo;ll drop it off around then and text you when
+                we&rsquo;re on the way.
+              </FieldDescription>
+            )}
             <FieldError id="pickupTime-error" errors={[errors.pickupTime]} />
+          </Field>
+        )}
+
+        {isDelivery && (
+          <Field>
+            <FieldLabel htmlFor="deliveryAddress">Delivery address</FieldLabel>
+            <Input
+              id="deliveryAddress"
+              autoComplete="street-address"
+              placeholder="Street, unit, city"
+              required
+              aria-invalid={!!errors.deliveryAddress}
+              aria-describedby={
+                errors.deliveryAddress ? "deliveryAddress-error" : undefined
+              }
+              {...register("deliveryAddress")}
+            />
+            {/* No area check on purpose: someone just over the bridge may
+                well be close enough. Sarah calls if it's too far. */}
+            <FieldDescription>
+              We deliver around Halifax and Dartmouth. If you&rsquo;re
+              further out, we&rsquo;ll be in touch.
+            </FieldDescription>
+            <FieldError
+              id="deliveryAddress-error"
+              errors={[errors.deliveryAddress]}
+            />
           </Field>
         )}
 
@@ -467,7 +583,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
             customer needs before they pay -- but it is reference, not a
             decision, so it reads better attached to the time they just
             chose than as 94px of preamble ahead of the first field. */}
-        {settings.pickupAddress && (
+        {!isDelivery && settings.pickupAddress && (
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>
@@ -617,7 +733,7 @@ export function CheckoutForm({ settings, orderCounts }: CheckoutFormProps) {
         <div className="sticky bottom-0 -mx-4 mt-2 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur supports-backdrop-filter:bg-background/80 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
           {selectedDate && pickupTime && (
             <p className="mb-2 text-center text-xs text-muted-foreground lg:hidden">
-              Pickup {format(selectedDate, "EEE, MMM d")} at{" "}
+              {handover} {format(selectedDate, "EEE, MMM d")} at{" "}
               {formatPickupTime(pickupTime)}
             </p>
           )}

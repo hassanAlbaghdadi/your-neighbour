@@ -1,6 +1,10 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { OrderStatus, PaymentStatus } from "@/types/database";
+import type {
+  FulfillmentMethod,
+  OrderStatus,
+  PaymentStatus,
+} from "@/types/database";
 
 export interface OrderLineItem {
   productName: string;
@@ -22,6 +26,8 @@ export interface OrderListItem {
   paymentStatus: PaymentStatus;
   itemCount: number;
   notes: string | null;
+  fulfillmentMethod: FulfillmentMethod;
+  deliveryAddress: string | null;
   items: OrderLineItem[];
 }
 
@@ -48,6 +54,8 @@ interface OrderRow {
   status: OrderStatus;
   payment_status: PaymentStatus;
   notes: string | null;
+  fulfillment_method: FulfillmentMethod;
+  delivery_address: string | null;
   order_items: {
     product_name: string;
     variant_label: string | null;
@@ -65,7 +73,7 @@ export async function getOrders(
   let query = supabase
     .from("orders")
     .select(
-      "id, customer_name, customer_phone, pickup_date, pickup_time, service_fee, total, status, payment_status, notes, order_items(product_name, variant_label, quantity, unit_price)",
+      "id, customer_name, customer_phone, pickup_date, pickup_time, service_fee, total, status, payment_status, notes, fulfillment_method, delivery_address, order_items(product_name, variant_label, quantity, unit_price)",
     )
     .order("pickup_date", { ascending: true })
     .order("pickup_time", { ascending: true });
@@ -99,6 +107,8 @@ export async function getOrders(
     status: order.status,
     paymentStatus: order.payment_status,
     notes: order.notes,
+    fulfillmentMethod: order.fulfillment_method,
+    deliveryAddress: order.delivery_address,
     itemCount: order.order_items.reduce((sum, item) => sum + item.quantity, 0),
     items: order.order_items.map((item) => ({
       productName: item.product_name,

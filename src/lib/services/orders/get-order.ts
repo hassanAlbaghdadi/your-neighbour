@@ -55,9 +55,12 @@ export async function getOrderById(id: string): Promise<OrderResult | null> {
     notes: order.notes,
     subtotal: order.subtotal,
     serviceFee: order.service_fee,
+    deliveryFee: order.delivery_fee,
     total: order.total,
     status: order.status,
     paymentStatus: order.payment_status,
+    fulfillmentMethod: order.fulfillment_method,
+    deliveryAddress: order.delivery_address,
     items: (items ?? []).map((item) => {
       // PostgREST types a to-one embed as `T | T[]`; normalise both.
       const product = Array.isArray(item.products)

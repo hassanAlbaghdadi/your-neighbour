@@ -14,6 +14,8 @@ const BASE: StoreSettings = {
   minAdvanceHours: 48,
   pickupTimeSlots: ["09:00", "12:00"],
   blackoutDates: [],
+  deliveryEnabled: false,
+  deliveryFee: 0,
 };
 
 // Fixed so the assertions don't drift with the wall clock. Well clear of a

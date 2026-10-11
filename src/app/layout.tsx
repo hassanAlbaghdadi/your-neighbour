@@ -76,6 +76,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <CartProvider>
           <SiteChrome
             minAdvanceHours={settings.minAdvanceHours}
+            deliveryEnabled={settings.deliveryEnabled}
             businessName={settings.businessName}
             contactEmail={settings.contactEmail}
             categories={categories}

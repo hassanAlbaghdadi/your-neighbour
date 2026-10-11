@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { updateSettingsAction } from "@/app/actions/settings";
 import {
@@ -73,6 +74,38 @@ export function SettingsForm({ settings }: { settings: StoreSettings }) {
             and those sections are hidden rather than shown blank.
           </p>
           <FieldError errors={[errors.pickupAddress]} />
+        </Field>
+
+        <Controller
+          control={control}
+          name="deliveryEnabled"
+          render={({ field }) => (
+            <Field orientation="horizontal">
+              <Switch
+                id="deliveryEnabled"
+                checked={!!field.value}
+                onCheckedChange={field.onChange}
+              />
+              <FieldLabel htmlFor="deliveryEnabled">Offer delivery</FieldLabel>
+            </Field>
+          )}
+        />
+
+        <Field>
+          <FieldLabel htmlFor="deliveryFee">Delivery fee ($)</FieldLabel>
+          <Input
+            id="deliveryFee"
+            type="number"
+            min={0}
+            step="0.01"
+            className="w-32"
+            {...register("deliveryFee")}
+          />
+          <p className="text-xs text-muted-foreground">
+            Added to delivery orders only. Customers choose pickup or delivery
+            at checkout and book the same dates and times either way.
+          </p>
+          <FieldError errors={[errors.deliveryFee]} />
         </Field>
 
         <Field>

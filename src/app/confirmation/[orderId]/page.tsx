@@ -14,7 +14,7 @@ import { PendingPayment } from "@/components/checkout/pending-payment";
 import { TrackOrderConfirmed } from "@/components/checkout/track-order-confirmed";
 import { getOrderById } from "@/lib/services/orders/get-order";
 import { getSettings } from "@/lib/services/settings/get-settings";
-import { SERVICE_FEE_LABEL } from "@/lib/pricing/order-totals";
+import { DELIVERY_FEE_LABEL, SERVICE_FEE_LABEL } from "@/lib/pricing/order-totals";
 import { formatPrice } from "@/lib/utils";
 import { formatPickupDate, formatPickupTime } from "@/lib/time";
 
@@ -39,6 +39,7 @@ function googleCalendarUrl(opts: {
   pickupTime: string;
   businessName: string;
   address: string | null;
+  label: string;
 }): string {
   const [year, month, day] = opts.pickupDate.split("-").map(Number);
   const [hour, minute] = opts.pickupTime.split(":").map(Number);
@@ -52,7 +53,7 @@ function googleCalendarUrl(opts: {
 
   const params = new URLSearchParams({
     action: "TEMPLATE",
-    text: `Pickup — ${opts.businessName}`,
+    text: `${opts.label} — ${opts.businessName}`,
     dates: `${toCalendarStamp(start)}/${toCalendarStamp(end)}`,
     ctz: "America/Halifax",
   });
@@ -97,6 +98,10 @@ export default async function ConfirmationPage(
     );
   }
 
+  const isDelivery = order.fulfillmentMethod === "delivery";
+  const handover = isDelivery ? "Delivery" : "Pickup";
+  // Where the handover happens: their door, or Sarah's.
+  const address = isDelivery ? order.deliveryAddress : settings.pickupAddress;
   const hasNotes = Boolean(order.notes?.trim());
   const visibleItems = order.items.slice(0, MAX_VISIBLE_ITEMS);
   const hiddenCount = order.items.length - visibleItems.length;
@@ -139,7 +144,7 @@ export default async function ConfirmationPage(
 
       <div className="mt-6 rounded-xl border border-border bg-card p-6 sm:p-7">
         <p className="text-xs font-semibold tracking-wider text-terracotta-600 uppercase">
-          Pickup Details
+          {handover} Details
         </p>
         <div className="mt-3 flex items-baseline justify-between gap-3 text-foreground">
           <span className="text-lg font-semibold">
@@ -149,11 +154,17 @@ export default async function ConfirmationPage(
             {formatPickupTime(order.pickupTime)}
           </span>
         </div>
-        {settings.pickupAddress && (
+        {address && (
           <div className="mt-3 flex items-start gap-2 text-sm">
             <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <p className="text-foreground">{settings.pickupAddress}</p>
+            <p className="text-foreground">{address}</p>
           </div>
+        )}
+        {isDelivery && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            We&rsquo;ll drop it off around this time and text you when
+            we&rsquo;re on the way.
+          </p>
         )}
 
         {/* Calendar and directions are the two things someone actually needs
@@ -171,7 +182,8 @@ export default async function ConfirmationPage(
                 pickupDate: order.pickupDate,
                 pickupTime: order.pickupTime,
                 businessName: settings.businessName,
-                address: settings.pickupAddress,
+                address,
+                label: handover,
               })}
               target="_blank"
               rel="noopener noreferrer"
@@ -179,7 +191,8 @@ export default async function ConfirmationPage(
               <CalendarPlus /> Add to calendar
             </a>
           </Button>
-          {settings.pickupAddress && (
+          {/* Directions to their own front door would be noise. */}
+          {!isDelivery && settings.pickupAddress && (
             <Button asChild variant="outline">
               <a
                 href={`https://maps.google.com/?q=${encodeURIComponent(settings.pickupAddress)}`}
@@ -251,16 +264,24 @@ export default async function ConfirmationPage(
               SERVICE_FEE_LABEL carries no percentage for the same reason.
               Anything without a positive fee falls back to a plain Total. */}
           <div className="mt-4 flex flex-col gap-1.5 border-t border-border pt-4 text-sm">
-            {order.serviceFee > 0 && (
+            {(order.serviceFee > 0 || order.deliveryFee > 0) && (
               <>
                 <div className="flex items-center justify-between text-muted-foreground">
                   <span>Subtotal</span>
                   <span>{formatPrice(order.subtotal)}</span>
                 </div>
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span>{SERVICE_FEE_LABEL}</span>
-                  <span>{formatPrice(order.serviceFee)}</span>
-                </div>
+                {order.serviceFee > 0 && (
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>{SERVICE_FEE_LABEL}</span>
+                    <span>{formatPrice(order.serviceFee)}</span>
+                  </div>
+                )}
+                {order.deliveryFee > 0 && (
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>{DELIVERY_FEE_LABEL}</span>
+                    <span>{formatPrice(order.deliveryFee)}</span>
+                  </div>
+                )}
               </>
             )}
             <div className="mt-1 flex items-center justify-between text-base font-medium text-foreground">

@@ -156,3 +156,19 @@ describe("toCents / fromCents", () => {
     expect(toCents(8.005)).toBe(801);
   });
 });
+
+describe("calculateOrderTotals with a delivery fee", () => {
+  it("adds the delivery fee to the total without charging the service fee on it", () => {
+    // 5% of the $24.00 food is $1.20; the $5.00 delivery is not part of
+    // what "Service fee" is a percentage of.
+    expect(calculateOrderTotals(2400, 500)).toEqual({
+      subtotalCents: 2400,
+      feeCents: 120,
+      totalCents: 3020,
+    });
+  });
+
+  it("is unchanged for a pickup, which passes no fee", () => {
+    expect(calculateOrderTotals(2400)).toEqual(calculateOrderTotals(2400, 0));
+  });
+});

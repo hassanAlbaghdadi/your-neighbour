@@ -9,6 +9,7 @@ import { CartDrawer } from "@/components/cart/cart-drawer";
 
 interface SiteChromeProps {
   minAdvanceHours: number;
+  deliveryEnabled: boolean;
   businessName: string;
   contactEmail: string;
   categories: { id: string; name: string }[];
@@ -30,6 +31,7 @@ interface SiteChromeProps {
  */
 export function SiteChrome({
   minAdvanceHours,
+  deliveryEnabled,
   businessName,
   contactEmail,
   categories,
@@ -52,12 +54,16 @@ export function SiteChrome({
       {!isCheckout && (
         <SiteFooter
           businessName={businessName}
+          deliveryEnabled={deliveryEnabled}
           contactEmail={contactEmail}
           categories={categories}
         />
       )}
 
-      <CartDrawer minAdvanceHours={minAdvanceHours} />
+      <CartDrawer
+        minAdvanceHours={minAdvanceHours}
+        deliveryEnabled={deliveryEnabled}
+      />
     </>
   );
 }

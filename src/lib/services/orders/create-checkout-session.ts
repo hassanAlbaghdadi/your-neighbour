@@ -3,7 +3,11 @@ import type Stripe from "stripe";
 import { headers } from "next/headers";
 import { getStripeClient } from "@/lib/stripe/client";
 import { createServiceRoleClient } from "@/lib/supabase/serviceRole";
-import { SERVICE_FEE_LABEL, toCents } from "@/lib/pricing/order-totals";
+import {
+  DELIVERY_FEE_LABEL,
+  SERVICE_FEE_LABEL,
+  toCents,
+} from "@/lib/pricing/order-totals";
 import type { OrderResult } from "@/lib/services/orders/create-order";
 
 // How long a pending order can hold its pickup-capacity slot before the
@@ -166,6 +170,20 @@ function buildLineItems(
         currency: "cad",
         unit_amount: feeCents,
         product_data: { name: SERVICE_FEE_LABEL },
+      },
+    });
+  }
+
+  // Read off the stored order for the same idempotency reason as the fee
+  // above. Pickup orders store 0, so they never get this line.
+  const deliveryCents = toCents(order.deliveryFee);
+  if (deliveryCents > 0) {
+    lineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: "cad",
+        unit_amount: deliveryCents,
+        product_data: { name: DELIVERY_FEE_LABEL },
       },
     });
   }

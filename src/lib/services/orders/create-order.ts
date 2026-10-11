@@ -6,13 +6,18 @@ import {
   calculateOrderTotals,
   fromCents,
   subtotalCentsOf,
+  toCents,
 } from "@/lib/pricing/order-totals";
 import { pickupInstant } from "@/lib/time";
 import type {
   CheckoutFieldName,
   CreateOrderInput,
 } from "@/lib/validations/order";
-import type { OrderStatus, PaymentStatus } from "@/types/database";
+import type {
+  FulfillmentMethod,
+  OrderStatus,
+  PaymentStatus,
+} from "@/types/database";
 
 const uuidSchema = z.string().uuid();
 
@@ -59,9 +64,15 @@ export interface OrderResult {
   notes: string | null;
   subtotal: number;
   serviceFee: number;
+  /** 0 on every pickup order. */
+  deliveryFee: number;
   total: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  /** pickupDate / pickupTime are the handover date and time for either method. */
+  fulfillmentMethod: FulfillmentMethod;
+  /** Null on every pickup order. */
+  deliveryAddress: string | null;
   items: OrderResultItem[];
 }
 
@@ -74,6 +85,18 @@ export async function processNewOrder(
   }
 
   const settings = await getSettings();
+
+  // A missing method is a pickup: that's what every order was before
+  // delivery existed, and what a checkout page left open across the deploy
+  // that added it was placing.
+  const fulfillmentMethod = input.fulfillmentMethod ?? "pickup";
+  const isDelivery = fulfillmentMethod === "delivery";
+  if (isDelivery && !settings.deliveryEnabled) {
+    throw new OrderError(
+      "Delivery isn't available right now. Please choose pickup instead.",
+      "fulfillmentMethod",
+    );
+  }
 
   if (!settings.pickupTimeSlots.includes(input.pickupTime)) {
     throw new OrderError(
@@ -180,6 +203,9 @@ export async function processNewOrder(
   // here and exactly once: Stripe is charged in cents, so a fee computed
   // in dollars gives the rounding a second chance to land somewhere else
   // and charge a penny more than the total the customer approved.
+  //
+  // The delivery fee comes from settings, never from the browser.
+  const deliveryFeeCents = isDelivery ? toCents(settings.deliveryFee) : 0;
   const { subtotalCents, feeCents, totalCents } = calculateOrderTotals(
     subtotalCentsOf(
       orderItems.map((item) => ({
@@ -187,9 +213,11 @@ export async function processNewOrder(
         quantity: item.quantity,
       })),
     ),
+    deliveryFeeCents,
   );
   const subtotal = fromCents(subtotalCents);
   const serviceFee = fromCents(feeCents);
+  const deliveryFee = fromCents(deliveryFeeCents);
   const total = fromCents(totalCents);
 
   // A single RPC call: the order row and its items are inserted inside one
@@ -213,6 +241,11 @@ export async function processNewOrder(
         subtotal,
         service_fee: serviceFee,
         total,
+        fulfillment_method: fulfillmentMethod,
+        delivery_fee: deliveryFee,
+        // Dropped on a pickup even if one was sent, so a pickup order never
+        // carries an address nobody is going to use.
+        delivery_address: isDelivery ? input.deliveryAddress?.trim() || null : null,
       },
       p_items: orderItems,
       p_max_orders_per_day: settings.maxOrdersPerDay,
@@ -239,9 +272,12 @@ export async function processNewOrder(
     notes: order.notes,
     subtotal: order.subtotal,
     serviceFee: order.service_fee,
+    deliveryFee: order.delivery_fee,
     total: order.total,
     status: order.status,
     paymentStatus: order.payment_status,
+    fulfillmentMethod: order.fulfillment_method,
+    deliveryAddress: order.delivery_address,
     items: orderItems.map((item) => ({
       productName: item.product_name,
       variantLabel: item.variant_label,
@@ -298,9 +334,12 @@ async function getExistingOrder(id: string): Promise<OrderResult | null> {
     notes: order.notes,
     subtotal: order.subtotal,
     serviceFee: order.service_fee,
+    deliveryFee: order.delivery_fee,
     total: order.total,
     status: order.status,
     paymentStatus: order.payment_status,
+    fulfillmentMethod: order.fulfillment_method,
+    deliveryAddress: order.delivery_address,
     items: (items ?? []).map((item) => ({
       productName: item.product_name,
       variantLabel: item.variant_label,

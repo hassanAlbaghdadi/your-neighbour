@@ -69,6 +69,13 @@ export const SERVICE_FEE_LABEL = "Service fee";
  */
 export const SERVICE_FEE_RATE_LABEL = `Service fee (${SERVICE_FEE_PERCENT}%)`;
 
+/**
+ * The Stripe line item name for the delivery fee. A constant for the same
+ * reason SERVICE_FEE_LABEL is: it is sent under an idempotency key, so it
+ * must not move between retries of the same order.
+ */
+export const DELIVERY_FEE_LABEL = "Delivery";
+
 export interface OrderTotals {
   subtotalCents: number;
   feeCents: number;
@@ -96,13 +103,21 @@ export function fromCents(cents: number): number {
  *
  * Half-up (`Math.round`) rather than floor: it is the convention, and the
  * most it can favour the business by is half a cent per order.
+ *
+ * The delivery fee is added after the service fee, never under it: the
+ * service fee is a percentage of the food, and charging 5% on top of a
+ * delivery charge would make "Service fee" describe something it isn't.
+ * Defaults to 0 so every pickup caller is unchanged.
  */
-export function calculateOrderTotals(subtotalCents: number): OrderTotals {
+export function calculateOrderTotals(
+  subtotalCents: number,
+  deliveryFeeCents = 0,
+): OrderTotals {
   const feeCents = Math.round(subtotalCents * SERVICE_FEE_RATE);
   return {
     subtotalCents,
     feeCents,
-    totalCents: subtotalCents + feeCents,
+    totalCents: subtotalCents + feeCents + deliveryFeeCents,
   };
 }
 

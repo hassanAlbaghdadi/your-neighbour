@@ -56,6 +56,8 @@ const settings: StoreSettings = {
   minAdvanceHours: 0,
   pickupTimeSlots: ["23:59"],
   blackoutDates: [],
+  deliveryEnabled: false,
+  deliveryFee: 0,
 };
 
 async function fillCheckoutForm() {
@@ -589,5 +591,89 @@ describe("CheckoutForm remembered customer", () => {
 
     await screen.findByText(/fully booked/i);
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe("CheckoutForm delivery option", () => {
+  beforeEach(() => {
+    createOrderActionMock.mockReset();
+    // A rejection, so a submit that gets through never tries to navigate.
+    createOrderActionMock.mockResolvedValue({
+      success: false,
+      error: "Stopped here by the test.",
+    });
+  });
+
+  const withDelivery: StoreSettings = {
+    ...settings,
+    deliveryEnabled: true,
+    deliveryFee: 5,
+  };
+
+  it("offers no choice while delivery is switched off", () => {
+    // The release guard: shipping this code must change nothing until the
+    // owner turns delivery on.
+    render(<CheckoutForm settings={settings} orderCounts={{}} />);
+
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/delivery address/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/collect from/i)).toBeInTheDocument();
+  });
+
+  it("starts on pickup, with the delivery fee shown before it's chosen", () => {
+    render(<CheckoutForm settings={withDelivery} orderCounts={{}} />);
+
+    expect(screen.getByRole("radio", { name: /pickup/i })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /delivery/i })).not.toBeChecked();
+    expect(screen.getByText("$5.00")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /continue to payment · \$8\.40/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("adds the fee and asks for an address once delivery is chosen", () => {
+    render(<CheckoutForm settings={withDelivery} orderCounts={{}} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /delivery/i }));
+
+    // $8.00 + 5% service fee on the food only + $5.00 delivery.
+    expect(
+      screen.getByRole("button", { name: /continue to payment · \$13\.40/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/delivery address/i)).toBeInTheDocument();
+    // Sarah's address is for collecting; it has no place on a delivery.
+    expect(screen.queryByText(/collect from/i)).not.toBeInTheDocument();
+  });
+
+  it("won't submit a delivery without an address", async () => {
+    render(<CheckoutForm settings={withDelivery} orderCounts={{}} />);
+    await fillCheckoutForm();
+    fireEvent.click(screen.getByRole("radio", { name: /delivery/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+
+    expect(
+      await screen.findByText("Enter your delivery address"),
+    ).toBeInTheDocument();
+    expect(createOrderActionMock).not.toHaveBeenCalled();
+  });
+
+  it("sends the method and address with the order", async () => {
+    render(<CheckoutForm settings={withDelivery} orderCounts={{}} />);
+    await fillCheckoutForm();
+    fireEvent.click(screen.getByRole("radio", { name: /delivery/i }));
+    fireEvent.change(screen.getByLabelText(/delivery address/i), {
+      target: { value: "2145 Gottingen St, Halifax" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+
+    await waitFor(() => expect(createOrderActionMock).toHaveBeenCalledTimes(1));
+    expect(createOrderActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fulfillmentMethod: "delivery",
+        deliveryAddress: "2145 Gottingen St, Halifax",
+      }),
+    );
   });
 });

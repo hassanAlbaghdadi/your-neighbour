@@ -47,7 +47,10 @@ export default async function HomePage() {
     <div className="flex flex-1 flex-col">
       <HeroSection imageUrl={heroImageUrl} imageAlt={heroImageAlt} />
 
-      <FounderNote minAdvanceHours={settings.minAdvanceHours} />
+      <FounderNote
+        minAdvanceHours={settings.minAdvanceHours}
+        deliveryEnabled={settings.deliveryEnabled}
+      />
 
       <section id="menu" className="scroll-mt-16">
         <div className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6">
