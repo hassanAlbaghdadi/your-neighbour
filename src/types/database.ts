@@ -15,6 +15,8 @@ export const ORDER_STATUSES: OrderStatus[] = [
 
 export type PaymentStatus = "unpaid" | "paid";
 
+export type FulfillmentMethod = "pickup" | "delivery";
+
 export type Json =
   | string
   | number
@@ -136,6 +138,9 @@ export interface Database {
           payment_status: PaymentStatus;
           stripe_checkout_session_id: string | null;
           notified_at: string | null;
+          fulfillment_method: FulfillmentMethod;
+          delivery_fee: number;
+          delivery_address: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -154,6 +159,9 @@ export interface Database {
           payment_status?: PaymentStatus;
           stripe_checkout_session_id?: string | null;
           notified_at?: string | null;
+          fulfillment_method?: FulfillmentMethod;
+          delivery_fee?: number;
+          delivery_address?: string | null;
           created_at?: string;
           updated_at?: string;
         };
